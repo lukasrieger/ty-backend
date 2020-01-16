@@ -1,11 +1,13 @@
 package repository
 
 import arrow.core.Option
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Query
+import org.jetbrains.exposed.sql.SortOrder
 
 /**
  * This class encapsulates a result that was returned by some database query.
- * Note that count DOES NOT consider, whether the original query was limited
+ * Note that count DOES NOT reflect, whether the original query was limited
  * or had an offset. Count always represents the real amount of matches, that were found for
  * the given query.
  * @param T
@@ -14,6 +16,12 @@ import org.jetbrains.exposed.sql.Query
  * @constructor
  */
 data class QueryResult<T>(val count: Int, val result: Collection<T>)
+
+inline class Ordering<T,S: SortOrder>(val ord: Pair<Column<T>,S>) {
+    operator fun component1() = ord
+}
+
+fun <T,S: SortOrder> orderOf(ord: () -> Pair<Column<T>,S>) = Ordering(ord())
 
 interface Repository<T> {
 
@@ -27,7 +35,7 @@ interface Repository<T> {
     suspend fun byId(id: PrimaryKey<T>): Option<T>
 
     /**
-     * Retrieve an arbitrary amount of entry from the database that match the given [query].
+     * Retrieve an arbitrary amount of entries from the database that match the given [query].
      * This function can be optionally supplied with an [offset] and [limit], which can be used for pagination.
      * The result of this function is wrapped as a [QueryResult]
      * @param limit Int?
@@ -35,7 +43,7 @@ interface Repository<T> {
      * @param query Query
      * @return QueryResult<T>
      */
-    suspend fun byQuery(limit: Int?, offset: Int?, query: Query): QueryResult<T>
+    suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<T>
 
     /**
      * Modifies the given [entry] in the database.

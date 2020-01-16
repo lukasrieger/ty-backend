@@ -35,12 +35,13 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
     override suspend fun byId(id: PrimaryKey<Article>): Option<Article> =
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.select { ArticlesTable.id eq id.key }
+                .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
                 .singleOrNull()
         }.asOption()
 
 
-    override suspend fun byQuery(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
-        (countOf(query) to queryResultSet(limit, offset, query)
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> =
+        (countOf(query) to queryResultSet(query, limit, offset)
             .map { it.toArticle() }
                 ).let { (count, seq) -> QueryResult(count, seq) }
 

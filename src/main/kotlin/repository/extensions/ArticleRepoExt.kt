@@ -7,15 +7,19 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.joda.time.DateTime
-import repository.ArticleRepository
-import repository.QueryResult
-import repository.Repository
+import repository.*
 import repository.dao.ArticlesTable
 import repository.toArticle
 
 
-internal suspend fun queryResultSet(limit: Int?, offset: Int?, query: Query) =
+internal suspend fun queryResultSet(
+    query: Query,
+    limit: Int? = null,
+    offset: Int? = null,
+    ordering: Ordering<DateTime, SortOrder> = Ordering(ArticlesTable.applicationDeadline to SortOrder.ASC)
+) =
     newSuspendedTransaction(Dispatchers.IO) {
+        val (ord) = ordering
         query
             .also { query ->
                 limit?.let {
@@ -23,10 +27,13 @@ internal suspend fun queryResultSet(limit: Int?, offset: Int?, query: Query) =
                     query.limit(limit)
                 }
             }
+            .orderBy(ord)
     }
 
 suspend fun Repository<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
-    (countOf(query) to queryResultSet(limit, offset, query)
+    (countOf(query) to queryResultSet(query, limit, offset, orderOf {
+        ArticlesTable.archiveDate to SortOrder.DESC
+    })
         .andWhere { ArticlesTable.archiveDate less DateTime.now() }
         .map { it.toArticle() }
             ).let { (count, seq) -> QueryResult(count, seq) }

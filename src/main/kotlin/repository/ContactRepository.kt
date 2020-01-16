@@ -23,7 +23,7 @@ object ContactRepository : Repository<ContactPartner> {
                 .singleOrNull()
         }.asOption()
 
-    override suspend fun byQuery(limit: Int?, offset: Int?, query: Query): QueryResult<ContactPartner> =
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<ContactPartner> =
         (countOf(query) to
                 newSuspendedTransaction(Dispatchers.IO) {
                     query
