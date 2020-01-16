@@ -1,0 +1,10 @@
+package repository.dao
+
+import org.jetbrains.exposed.dao.IntIdTable
+
+object ContactTable : IntIdTable() {
+    val firstName = varchar("firstName", 50)
+    val lastName = varchar("lastname", 50)
+    val phoneNumber = varchar("phoneNumber", 50)
+    val url = text("url")
+}
