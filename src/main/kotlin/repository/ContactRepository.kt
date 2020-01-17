@@ -2,6 +2,7 @@ package repository
 
 import arrow.core.None
 import arrow.core.Option
+import arrow.core.Right
 import arrow.core.Some
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
@@ -9,6 +10,9 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import repository.dao.ContactTable
+
+
+private typealias ContactIndex = PrimaryKey<ContactPartner>
 
 object ContactRepository : Repository<ContactPartner> {
 
@@ -33,30 +37,50 @@ object ContactRepository : Repository<ContactPartner> {
                                 query.limit(limit)
                             }
                         }.map { it.toContactPartner() }
-
                 }
                 ).let { (count, seq) -> QueryResult(count, seq) }
 
 
-    override suspend fun update(entry: ContactPartner): PrimaryKey<ContactPartner> =
+    override suspend fun update(entry: ContactPartner): Result<ContactIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
-            ContactTable.update({ ContactTable.id eq entry.id }) { entry.toStatement(it) }
-        }.let(::keyOf)
-
-
-    override suspend fun create(entry: ContactPartner): PrimaryKey<ContactPartner> =
-        newSuspendedTransaction(Dispatchers.IO) {
-            ContactTable.insert {
-                entry.toStatement(it)
-            } get ContactTable.id
-        }.value.let(::keyOf)
-
-    override suspend fun delete(id: PrimaryKey<ContactPartner>): PrimaryKey<ContactPartner> =
-        newSuspendedTransaction(Dispatchers.IO) {
-            ContactTable.deleteWhere {
-                ContactTable.id eq id.key
+            ContactTable.runCatching {
+                update({ ContactTable.id eq entry.id }) { entry.toStatement(it) }
+            }.mapCatching {
+                keyOf<ContactPartner>(it)
             }
-        }.let(::keyOf)
+        }.fold(
+            onSuccess = { Right(it) },
+            onFailure = { it.queryException() }
+        )
+
+
+    override suspend fun create(entry: ContactPartner): Result<ContactIndex> =
+        newSuspendedTransaction(Dispatchers.IO) {
+            ContactTable.runCatching {
+                insert {
+                    entry.toStatement(it)
+                } get ContactTable.id
+            }.mapCatching {
+                keyOf<ContactPartner>(it.value)
+            }
+        }.fold(
+            onSuccess = { Right(it) },
+            onFailure = { it.queryException() }
+        )
+
+    override suspend fun delete(id: PrimaryKey<ContactPartner>): Result<ContactIndex> =
+        newSuspendedTransaction(Dispatchers.IO) {
+            ContactTable.runCatching {
+                deleteWhere {
+                    ContactTable.id eq id.key
+                }
+            }.mapCatching {
+                keyOf<ContactPartner>(it)
+            }
+        }.fold(
+            onSuccess = { Right(it) },
+            onFailure = { it.queryException() }
+        )
 
     override suspend fun countOf(query: Query): Int = newSuspendedTransaction(Dispatchers.IO) {
         query.count()

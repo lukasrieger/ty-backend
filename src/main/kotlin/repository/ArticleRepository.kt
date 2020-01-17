@@ -1,12 +1,13 @@
 package repository
 
+import arrow.core.*
 import arrow.core.None
-import arrow.core.Option
-import arrow.core.Some
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import model.Article
+import model.error.QueryException
+import model.error.of
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -17,6 +18,7 @@ import repository.dao.ArticlesTable
 import repository.extensions.queryResultSet
 import kotlin.coroutines.CoroutineContext
 
+private typealias ArticleIndex = PrimaryKey<Article>
 
 object ArticleRepository : Repository<Article>, CoroutineScope {
 
@@ -46,19 +48,35 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
                 ).let { (count, seq) -> QueryResult(count, seq) }
 
 
-    override suspend fun update(entry: Article): PrimaryKey<Article> =
+    override suspend fun update(entry: Article): Result<ArticleIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
-            val (key) = entry.id
-            ArticlesTable.update({ ArticlesTable.id eq key }) { entry.toStatement(it) }
-        }.let(::keyOf)
+            ArticlesTable.runCatching {
+                val (key) = entry.id
+                update({ ArticlesTable.id eq key }) { entry.toStatement(it) }
+            }.mapCatching {
+                keyOf<Article>(it)
+            }
+
+        }.fold(
+            onSuccess = { Right(it) },
+            onFailure = { it.queryException() }
+
+        )
 
 
-    override suspend fun create(entry: Article): PrimaryKey<Article> =
+    override suspend fun create(entry: Article): Result<ArticleIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.insert {
-                entry.toStatement(it)
-            } get ArticlesTable.id
-        }.value.let(::keyOf)
+            ArticlesTable.runCatching {
+                insert {
+                    entry.toStatement(it)
+                } get ArticlesTable.id
+            }.mapCatching {
+                keyOf<Article>(it.value)
+            }
+        }.fold(
+            onSuccess = { Right(it) },
+            onFailure = { it.queryException() }
+        )
 
 
     override suspend fun countOf(query: Query): Int =
@@ -67,10 +85,18 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
         }
 
 
-    override suspend fun delete(id: PrimaryKey<Article>): PrimaryKey<Article> =
+    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.deleteWhere { ArticlesTable.id eq id.key }
-        }.let(::keyOf)
+            ArticlesTable.runCatching {
+                deleteWhere { ArticlesTable.id eq id.key }
+            }.mapCatching {
+                keyOf<Article>(it)
+            }
+
+        }.fold(
+            onSuccess = { Right(it) },
+            onFailure = { it.queryException() }
+        )
 
 }
 
@@ -111,6 +137,8 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.childArticle] = childArticle.map { it.id.key }.orNull()
         this[ArticlesTable.parentArticle] = parentArticle.map { it.id.key }.orNull()
     }
+
+internal fun Throwable.queryException() = QueryException.of(this).left()
 
 
 private suspend fun ResultRow?.asOption(): Option<Article> = when (this) {

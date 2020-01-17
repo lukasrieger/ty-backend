@@ -1,5 +1,6 @@
 package model
 
+
 data class ContactPartner(
     val id: Int = 0,
     val surname: String,
@@ -7,6 +8,4 @@ data class ContactPartner(
     val phoneNumber: String,
     val url: String
 )
-
-
 

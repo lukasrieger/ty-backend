@@ -1,6 +1,8 @@
 package repository
 
+import arrow.core.Either
 import arrow.core.Option
+import model.error.QueryException
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
@@ -16,6 +18,8 @@ import org.jetbrains.exposed.sql.SortOrder
  * @constructor
  */
 data class QueryResult<T>(val count: Int, val result: Collection<T>)
+
+typealias Result<T> = Either<QueryException, T>
 
 inline class Ordering<T,S: SortOrder>(val ord: Pair<Column<T>,S>) {
     operator fun component1() = ord
@@ -52,7 +56,7 @@ interface Repository<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun update(entry: T): PrimaryKey<T>
+    suspend fun update(entry: T): Result<PrimaryKey<T>>
 
     /**
      * Create a new [entry] in the database.
@@ -60,7 +64,7 @@ interface Repository<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun create(entry: T): PrimaryKey<T>
+    suspend fun create(entry: T): Result<PrimaryKey<T>>
 
     /**
      * Removes an entry from the database that matches the given [id].
@@ -68,7 +72,7 @@ interface Repository<T> {
      * @param id PrimaryKey<T>
      * @return PrimaryKey<T>
      */
-    suspend fun delete(id: PrimaryKey<T>): PrimaryKey<T>
+    suspend fun delete(id: PrimaryKey<T>): Result<PrimaryKey<T>>
 
     /**
      * Returns the amount of entries in the database that match the given [query]
