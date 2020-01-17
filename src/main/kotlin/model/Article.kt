@@ -2,11 +2,11 @@ package model
 
 import arrow.core.Option
 import org.joda.time.DateTime
+import repository.None
 import repository.PrimaryKey
-import repository.keyOf
 
 data class Article(
-    val id: PrimaryKey<Article> = keyOf(0),
+    val id: PrimaryKey<Article> = None,
     val name: String,
     val text: String,
     val rubric: Rubric,
