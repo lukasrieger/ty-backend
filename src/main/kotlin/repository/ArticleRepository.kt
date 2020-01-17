@@ -88,9 +88,7 @@ internal suspend fun ResultRow.toArticle(): Article =
         archiveDate = this[ArticlesTable.archiveDate],
         isRecurrent = this[ArticlesTable.isRecurrent],
         applicationDeadline = this[ArticlesTable.applicationDeadline],
-        contactPartner = fromNullable(
-            this[ArticlesTable.contactPartner]
-        ) { byId(it) },
+        contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
         childArticle = fromNullable(this[ArticlesTable.childArticle]) { byId(it) },
         parentArticle = fromNullable(this[ArticlesTable.parentArticle]) { byId(it) }
 
