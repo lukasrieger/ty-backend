@@ -1,7 +1,13 @@
 package repository.extensions
 
+import arrow.core.Either
+import arrow.core.Right
+import arrow.core.extensions.either.applicative.applicative
+import arrow.core.extensions.list.traverse.sequence
+import arrow.core.fix
 import kotlinx.coroutines.Dispatchers
 import model.Article
+import model.error.leftOf
 import model.recurrentCopy
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateStatement
@@ -9,7 +15,6 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.joda.time.DateTime
 import repository.*
 import repository.dao.ArticlesTable
-import repository.toArticle
 
 
 internal suspend fun queryResultSet(
@@ -30,6 +35,16 @@ internal suspend fun queryResultSet(
             .orderBy(ord)
     }
 
+/**
+ * This function behaves exactly like [Repository.byQuery], only that only archived articles will be returned by this
+ * function. Not that this also changes the ordering of the resulting articles. Those articles whose archiveDate is
+ * closest to the current Date will be closer to the top.
+ * @receiver Repository<Article>
+ * @param limit Int?
+ * @param offset Int?
+ * @param query Query
+ * @return QueryResult<Article>
+ */
 suspend fun Repository<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
     (countOf(query) to queryResultSet(query, limit, offset, orderOf {
         ArticlesTable.archiveDate to SortOrder.DESC
@@ -39,14 +54,37 @@ suspend fun Repository<Article>.byQueryArchived(limit: Int?, offset: Int?, query
             ).let { (count, seq) -> QueryResult(count, seq) }
 
 
-private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit) =
+private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Result<ArticleIndex> =
     newSuspendedTransaction(Dispatchers.IO) {
-        ArticlesTable.update({ ArticlesTable.id eq id }) {
-            it.run(statement)
-        }
+        ArticlesTable.runCatching {
+            update({ ArticlesTable.id eq id }) {
+                it.run(statement)
+            }
+        }.mapCatching {
+            keyOf<Article>(it)
+        }.fold(
+            onSuccess = { Right(it) },
+            onFailure = { leftOf<ArticleIndex>(it) }
+        )
+
     }
 
-suspend fun Repository<Article>.createRecurrentArticles() =
+/**
+ * This function is rather complex. The reason for that though is justified.
+ * As a first step, this function queries all articles for which the recurrence date is (as of DateTime.now())
+ * in the past.
+ * These articles are subsequently mapped to a pair of themselves and their recurrent copy.
+ * All that is left now is actually writing the new child articles to the database. The problem is though, that
+ * updating and creating are inherently fallible actions.
+ * (While that is also theoretically the case for simply reading from the database, I chose to model reading to be
+ * safe as a design decision)
+ *
+ * We achieve complete exception safety by wrapping all actions in the result type.
+ * Note that we have to use when in [map] in order to stay within the coroutine context of [Repository]
+ * @receiver Repository<Article>
+ * @return Result<Unit>
+ */
+suspend fun Repository<Article>.createRecurrentArticles(): Result<Unit> =
     newSuspendedTransaction(Dispatchers.IO) {
         ArticlesTable.select {
 
@@ -57,15 +95,24 @@ suspend fun Repository<Article>.createRecurrentArticles() =
         }
             .map { it.toArticle().let { article -> article to article.recurrentCopy() } }
     }
-
-        .forEach {
-            // create recurrent article in the database and update old article with ID of new child
-            val (parent, child) = it
-
-            val (childKey) = ArticleRepository.create(child)
+        .map { (parent, child) ->
             val (parentKey) = parent.id
+            val (childKey) = child.id
 
-            updateArticle(parentKey) {
-                this[ArticlesTable.childArticle] = childKey
+            when (val recurrentResult = create(child)) {
+                is Either.Left -> {
+                    recurrentResult
+                }
+                is Either.Right -> {
+                    updateArticle(parentKey) {
+                        this[ArticlesTable.childArticle] = childKey
+                    }
+                }
             }
-        }
+        }.sequence(Either.applicative()).fix()
+        .fold(
+            ifLeft = {
+                Result.left(it)
+            },
+            ifRight = { Result.right(Unit) }
+        )

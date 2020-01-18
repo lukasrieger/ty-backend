@@ -23,7 +23,6 @@ class ArticleRepositoryTest() : StringSpec(), KoinComponent, CoroutineScope {
         get() = Dispatchers.Default + CoroutineName("ArticleRepositoryTest")
 
 
-
     init {
         "Any kind of article should be queryable by its id" {
             assertNone { a: Article ->

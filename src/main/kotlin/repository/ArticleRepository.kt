@@ -1,13 +1,11 @@
 package repository
 
-import arrow.core.*
 import arrow.core.None
+import arrow.core.Option
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import model.Article
-import model.error.QueryException
-import model.error.of
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -18,7 +16,7 @@ import repository.dao.ArticlesTable
 import repository.extensions.queryResultSet
 import kotlin.coroutines.CoroutineContext
 
-private typealias ArticleIndex = PrimaryKey<Article>
+internal typealias ArticleIndex = PrimaryKey<Article>
 
 object ArticleRepository : Repository<Article>, CoroutineScope {
 
@@ -39,7 +37,7 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
             ArticlesTable.select { ArticlesTable.id eq id.key }
                 .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
                 .singleOrNull()
-        }.asOption()
+        }.asOption(ResultRow::toArticle)
 
 
     override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> =
@@ -57,11 +55,7 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
                 keyOf<Article>(it)
             }
 
-        }.fold(
-            onSuccess = { Right(it) },
-            onFailure = { it.queryException() }
-
-        )
+        }.foldEither()
 
 
     override suspend fun create(entry: Article): Result<ArticleIndex> =
@@ -73,10 +67,7 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
             }.mapCatching {
                 keyOf<Article>(it.value)
             }
-        }.fold(
-            onSuccess = { Right(it) },
-            onFailure = { it.queryException() }
-        )
+        }.foldEither()
 
 
     override suspend fun countOf(query: Query): Int =
@@ -93,10 +84,7 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
                 keyOf<Article>(it)
             }
 
-        }.fold(
-            onSuccess = { Right(it) },
-            onFailure = { it.queryException() }
-        )
+        }.foldEither()
 
 }
 
@@ -138,13 +126,7 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.parentArticle] = parentArticle.map { it.id.key }.orNull()
     }
 
-internal fun Throwable.queryException() = QueryException.of(this).left()
 
-
-private suspend fun ResultRow?.asOption(): Option<Article> = when (this) {
-    null -> None
-    else -> Some(this.toArticle())
-}
 
 
 private suspend fun <T> fromNullable(

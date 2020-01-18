@@ -1,11 +1,10 @@
 package model.error
 
-sealed class QueryException {
-    companion object
-}
+import arrow.core.Either
 
-object GenericFailure : QueryException()
 
-data class EntryExistsException(val reason: String) : QueryException()
+data class QueryException(val reason: Throwable)
 
-fun QueryException.Companion.of(err: Throwable): QueryException = TODO()
+internal fun errOf(err: Throwable): QueryException = QueryException(err)
+
+internal fun <T> leftOf(err: Throwable): Either<QueryException, T> = Either.left(errOf(err))
