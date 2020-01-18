@@ -21,7 +21,7 @@ internal suspend fun queryResultSet(
     query: Query,
     limit: Int? = null,
     offset: Int? = null,
-    ordering: Ordering<DateTime, SortOrder> = Ordering(ArticlesTable.applicationDeadline to SortOrder.ASC)
+    ordering: Ordering<DateTime, SortOrder> = orderOf { ArticlesTable.applicationDeadline to SortOrder.ASC }
 ) =
     newSuspendedTransaction(Dispatchers.IO) {
         val (ord) = ordering
@@ -103,21 +103,16 @@ suspend fun Repository<Article>.createRecurrentArticles(): Result<Unit> =
             val (childKey) = child.id
 
             when (val recurrentResult = create(child)) {
-                is Either.Left -> {
-                    recurrentResult
+                is Either.Left -> recurrentResult
+                is Either.Right -> updateArticle(parentKey) {
+                    this[ArticlesTable.childArticle] = childKey
+                    this[ArticlesTable.isRecurrent] = false
                 }
-                is Either.Right -> {
-                    updateArticle(parentKey) {
-                        this[ArticlesTable.childArticle] = childKey
-                        // this article should no longer produce a child
-                        this[ArticlesTable.isRecurrent] = false
-                    }
-                }
+
             }
-        }.sequence(Either.applicative()).fix()
+        }
+        .sequence(Either.applicative()).fix()
         .fold(
-            ifLeft = {
-                Result.left(it)
-            },
+            ifLeft = { Result.left(it) },
             ifRight = { Result.right(Unit) }
         )
