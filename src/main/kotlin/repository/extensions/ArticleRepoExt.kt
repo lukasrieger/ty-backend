@@ -93,7 +93,10 @@ suspend fun Repository<Article>.createRecurrentArticles(): Result<Unit> =
                     ArticlesTable.childArticle.isNull()
 
         }
-            .map { it.toArticle().let { article -> article to article.recurrentCopy() } }
+            .map {
+                val article = it.toArticle()
+                article to article.recurrentCopy()
+            }
     }
         .map { (parent, child) ->
             val (parentKey) = parent.id
@@ -106,6 +109,8 @@ suspend fun Repository<Article>.createRecurrentArticles(): Result<Unit> =
                 is Either.Right -> {
                     updateArticle(parentKey) {
                         this[ArticlesTable.childArticle] = childKey
+                        // this article should no longer produce a child
+                        this[ArticlesTable.isRecurrent] = false
                     }
                 }
             }

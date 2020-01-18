@@ -28,7 +28,6 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
         transaction {
             SchemaUtils.create(ArticlesTable)
         }
-
     }
 
 
@@ -54,7 +53,6 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
             }.mapCatching {
                 keyOf<Article>(it)
             }
-
         }.foldEither()
 
 
@@ -83,7 +81,6 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
             }.mapCatching {
                 keyOf<Article>(it)
             }
-
         }.foldEither()
 
 }
