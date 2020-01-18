@@ -37,4 +37,4 @@ class Key<out T>(k: Int) : PrimaryKey<T>(key = k)
  * @param key Int
  * @return Key<T>
  */
-internal fun <T> keyOf(key: Int) = Key<T>(key)
+fun <T> keyOf(key: Int) = Key<T>(key)

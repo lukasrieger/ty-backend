@@ -22,18 +22,17 @@ internal suspend fun queryResultSet(
     limit: Int? = null,
     offset: Int? = null,
     ordering: Ordering<DateTime, SortOrder> = orderOf { ArticlesTable.applicationDeadline to SortOrder.ASC }
-) =
-    newSuspendedTransaction(Dispatchers.IO) {
-        val (ord) = ordering
-        query
-            .also { query ->
-                limit?.let {
-                    offset?.let { query.limit(limit, offset) }
-                    query.limit(limit)
-                }
+) = newSuspendedTransaction(Dispatchers.IO) {
+    val (ord) = ordering
+    query
+        .also { query ->
+            limit?.let {
+                offset?.let { query.limit(limit, offset) }
+                query.limit(limit)
             }
-            .orderBy(ord)
-    }
+        }
+        .orderBy(ord)
+}
 
 /**
  * This function behaves exactly like [Repository.byQuery], only that only archived articles will be returned by this

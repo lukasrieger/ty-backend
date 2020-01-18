@@ -12,10 +12,7 @@ class Constraint(val isUnion: Boolean, val operator: Op<Boolean>) {
 }
 
 fun constraint(isUnion: Boolean, cons: SqlExpressionBuilder.() -> Op<Boolean>): Constraint =
-    Constraint(
-        isUnion,
-        SqlExpressionBuilder.cons()
-    )
+    Constraint(isUnion, SqlExpressionBuilder.cons())
 
 
 fun Rubric.toConstraint(isUnion: Boolean = false) = constraint(isUnion) {

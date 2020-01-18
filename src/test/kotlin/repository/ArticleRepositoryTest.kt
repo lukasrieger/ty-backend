@@ -34,7 +34,9 @@ class ArticleRepositoryTest() : StringSpec(), KoinComponent, CoroutineScope {
             }
         }
 
-        "byQuery" { }
+        "byQuery" {
+
+        }
 
         "update" { }
 

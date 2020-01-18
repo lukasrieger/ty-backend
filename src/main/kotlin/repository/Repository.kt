@@ -1,12 +1,10 @@
 package repository
 
-import arrow.core.*
-import arrow.core.None
+import arrow.core.Either
+import arrow.core.Option
 import model.error.QueryException
-import model.error.leftOf
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Query
-import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 
 /**
@@ -28,25 +26,6 @@ inline class Ordering<T, S : SortOrder>(val ord: Pair<Column<T>, S>) {
 }
 
 fun <T, S : SortOrder> orderOf(ord: () -> Pair<Column<T>, S>) = Ordering(ord())
-
-
-internal fun <T> kotlin.Result<T>.foldEither(): Result<T> = fold(
-    onSuccess = { Right(it) },
-    onFailure = { leftOf(it) }
-)
-
-
-internal suspend inline fun <T> ResultRow?.asOption(crossinline builder: suspend ResultRow.() -> T): Option<T> =
-    when (this) {
-        null -> None
-        else -> Some(this.builder())
-    }
-
-
-internal inline fun <T> ResultRow?.asOption(builder: ResultRow.() -> T): Option<T> = when (this) {
-    null -> None
-    else -> Some(this.builder())
-}
 
 
 /**
