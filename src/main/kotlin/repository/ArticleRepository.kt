@@ -36,7 +36,8 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
             ArticlesTable.select { ArticlesTable.id eq id.key }
                 .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
                 .singleOrNull()
-        }.asOption(ResultRow::toArticle)
+                .asOption(ResultRow::toArticle)
+        }
 
 
     override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> =

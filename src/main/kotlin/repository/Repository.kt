@@ -21,7 +21,7 @@ data class QueryResult<T>(val count: Int, val result: Collection<T>)
 
 typealias Result<T> = Either<QueryException, T>
 
-inline class Ordering<T, S : SortOrder>(val ord: Pair<Column<T>, S>) {
+class Ordering<T, S : SortOrder>(val ord: Pair<Column<T>, S>) {
     operator fun component1() = ord
 }
 
