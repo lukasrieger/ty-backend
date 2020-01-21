@@ -1,8 +1,11 @@
 package model
 
+import repository.None
+import repository.PrimaryKey
+
 
 data class ContactPartner(
-    val id: Int = 0,
+    val id: PrimaryKey<ContactPartner> = None,
     val surname: String,
     val lastname: String,
     val phoneNumber: String,

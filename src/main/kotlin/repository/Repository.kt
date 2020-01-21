@@ -66,10 +66,11 @@ interface Repository<T> {
     /**
      * Create a new [entry] in the database.
      * This function may throw an exception, if an entry with equivalent ids already exists.
+     * On success, this functions returns an updated version of [entry] with the id set to the actual key
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun create(entry: T): Result<PrimaryKey<T>>
+    suspend fun create(entry: T): Result<T>
 
     /**
      * Removes an entry from the database that matches the given [id].

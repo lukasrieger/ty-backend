@@ -6,7 +6,6 @@ import arrow.core.None
 import io.kotlintest.assertions.arrow.either.shouldBeRight
 import io.kotlintest.assertions.arrow.option.shouldBeNone
 import io.kotlintest.assertions.arrow.option.shouldNotBeNone
-import io.kotlintest.extensions.ProjectListener
 import io.kotlintest.koin.KoinListener
 import io.kotlintest.properties.Gen
 import io.kotlintest.properties.assertAll
@@ -57,23 +56,6 @@ object ArticleGenerator : Gen<Article> {
 
 }
 
-object ConnectionListener : ProjectListener {
-
-    private val connection = lazy {
-        Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver").also {
-            it.useNestedTransactions = true
-        }
-    }
-
-    override fun afterProject() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun beforeProject() {
-        connection.value
-    }
-
-}
 
 val testModule = module {
     single<Repository<Article>> {
@@ -81,7 +63,7 @@ val testModule = module {
     }
 }
 
-class ArticleRepositoryTest() : StringSpec(), KoinTest, CoroutineScope {
+class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
     override fun listeners() = listOf(KoinListener(testModule))
 

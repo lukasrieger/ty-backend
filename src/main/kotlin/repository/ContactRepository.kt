@@ -40,22 +40,23 @@ object ContactRepository : Repository<ContactPartner> {
 
     override suspend fun update(entry: ContactPartner): Result<ContactIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
+            val (key) = entry.id
             ContactTable.runCatching {
-                update({ ContactTable.id eq entry.id }) { entry.toStatement(it) }
+                update({ ContactTable.id eq key }) { entry.toStatement(it) }
             }.mapCatching {
                 keyOf<ContactPartner>(it)
             }
         }.foldEither()
 
 
-    override suspend fun create(entry: ContactPartner): Result<ContactIndex> =
+    override suspend fun create(entry: ContactPartner): Result<ContactPartner> =
         newSuspendedTransaction(Dispatchers.IO) {
             ContactTable.runCatching {
                 insert {
                     entry.toStatement(it)
                 } get ContactTable.id
             }.mapCatching {
-                keyOf<ContactPartner>(it.value)
+                entry.copy(id = keyOf(it.value))
             }
         }.foldEither()
 
@@ -91,7 +92,7 @@ suspend fun Repository<ContactPartner>.getContactPartners(): Sequence<ContactPar
 
 private fun ResultRow.toContactPartner() =
     ContactPartner(
-        id = this[ContactTable.id].value,
+        id = keyOf(this[ContactTable.id].value),
         surname = this[ContactTable.firstName],
         lastname = this[ContactTable.lastName],
         phoneNumber = this[ContactTable.phoneNumber],

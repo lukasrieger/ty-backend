@@ -57,14 +57,14 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
         }.foldEither()
 
 
-    override suspend fun create(entry: Article): Result<ArticleIndex> =
+    override suspend fun create(entry: Article): Result<Article> =
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.runCatching {
                 insert {
                     entry.toStatement(it)
                 } get ArticlesTable.id
             }.mapCatching {
-                keyOf<Article>(it.value)
+                entry.copy(id = keyOf(it.value))
             }
         }.foldEither()
 
@@ -119,7 +119,7 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.archiveDate] = archiveDate
         this[ArticlesTable.isRecurrent] = isRecurrent
         this[ArticlesTable.applicationDeadline] = applicationDeadline
-        this[ArticlesTable.contactPartner] = contactPartner.map { it.id }.orNull()
+        this[ArticlesTable.contactPartner] = contactPartner.map { it.id.key }.orNull()
         this[ArticlesTable.childArticle] = childArticle.map { it.id.key }.orNull()
         this[ArticlesTable.parentArticle] = parentArticle.map { it.id.key }.orNull()
     }
