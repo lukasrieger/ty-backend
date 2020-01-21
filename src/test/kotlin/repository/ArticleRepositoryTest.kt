@@ -82,8 +82,8 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
                     val keyResult = repo.create(article)
                     keyResult.shouldBeRight()
 
-                    val (primaryKey) = keyResult as Right<PrimaryKey<Article>>
-                    val art = repo.byId(primaryKey)
+                    val (createdArticle) = keyResult as Right<Article>
+                    val art = repo.byId(createdArticle.id)
 
                     art.shouldNotBeNone()
 
