@@ -1,6 +1,7 @@
 package repository.extensions
 
 import arrow.core.Either
+import arrow.core.Either.Companion.left
 import arrow.core.Right
 import arrow.core.extensions.either.applicative.applicative
 import arrow.core.extensions.list.traverse.sequence
@@ -23,20 +24,13 @@ internal suspend fun queryResultSet(
     offset: Int? = null,
     ordering: Ordering<DateTime, SortOrder> = orderOf { ArticlesTable.applicationDeadline to SortOrder.ASC }
 ) = newSuspendedTransaction(Dispatchers.IO) {
-    val (ord) = ordering
-    query
-        .also { query ->
-            limit?.let {
-                offset?.let { query.limit(limit, offset) }
-                query.limit(limit)
-            }
-        }
-        .orderBy(ord)
+    query.paginate(limit,offset)
+        .orderBy(ordering.ord)
 }
 
 /**
  * This function behaves exactly like [Repository.byQuery], only that only archived articles will be returned by this
- * function. Not that this also changes the ordering of the resulting articles. Those articles whose archiveDate is
+ * function. Note that this also changes the ordering of the resulting articles. Those articles whose archiveDate is
  * closest to the current Date will be closer to the top.
  * @receiver Repository<Article>
  * @param limit Int?
@@ -62,14 +56,14 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
         }.mapCatching {
             keyOf<Article>(it)
         }.fold(
-            onSuccess = { Right(it) },
+            onSuccess = ::Right,
             onFailure = { leftOf<ArticleIndex>(it) }
         )
 
     }
 
 /**
- * This function is rather complex. The reason for that though is justified.
+ * This function is rather complex.
  * As a first step, this function queries all articles for which the recurrence date is (as of DateTime.now())
  * in the past.
  * These articles are subsequently mapped to a pair of themselves and their recurrent copy.
@@ -112,6 +106,16 @@ suspend fun Repository<Article>.createRecurrentArticles(): Result<Unit> =
         }
         .sequence(Either.applicative()).fix()
         .fold(
-            ifLeft = { Result.left(it) },
+            ifLeft = ::left,
             ifRight = { Result.right(Unit) }
         )
+
+private fun Query.paginate(limit: Int?, offset: Int?): Query = apply {
+    if (limit != null) {
+        if (offset != null) {
+            limit(limit, offset)
+        }
+        limit(limit)
+    }
+}
+

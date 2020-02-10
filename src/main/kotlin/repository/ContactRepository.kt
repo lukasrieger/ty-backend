@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import repository.dao.ContactTable
 
 
+
 internal typealias ContactIndex = PrimaryKey<ContactPartner>
 
 object ContactRepository : Repository<ContactPartner> {
@@ -77,20 +78,8 @@ object ContactRepository : Repository<ContactPartner> {
 
 }
 
-/**
- * This function retrieves all available ContactPartners from the database.
- * By design there will never be sufficiently large amounts of contact partners to warrant some kind of pagination.
- * @receiver Repository<ContactPartner>
- * @return Sequence<ContactPartner>
- */
-suspend fun Repository<ContactPartner>.getContactPartners(): Sequence<ContactPartner> =
-    newSuspendedTransaction(Dispatchers.IO) {
-        ContactTable.selectAll()
-            .mapNotNull { it.toContactPartner() }
-    }.asSequence()
 
-
-private fun ResultRow.toContactPartner() =
+internal fun ResultRow.toContactPartner() =
     ContactPartner(
         id = keyOf(this[ContactTable.id].value),
         surname = this[ContactTable.firstName],
@@ -106,4 +95,3 @@ private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
         this[ContactTable.phoneNumber] = phoneNumber
         this[ContactTable.url] = url
     }
-

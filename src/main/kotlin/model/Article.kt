@@ -1,12 +1,15 @@
 package model
 
+import arrow.core.None
 import arrow.core.Option
+import arrow.core.Some
 import org.joda.time.DateTime
-import repository.None
+import repository.None as InitKey
 import repository.PrimaryKey
 
+
 data class Article(
-    val id: PrimaryKey<Article> = None,
+    val id: PrimaryKey<Article> = InitKey,
     val name: String,
     val text: String,
     val rubric: Rubric,
@@ -17,9 +20,9 @@ data class Article(
     val archiveDate: DateTime,
     val isRecurrent: Boolean,
     val applicationDeadline: DateTime,
-    val contactPartner: Option<ContactPartner>,
-    val childArticle: Option<Article>,
-    val parentArticle: Option<Article>
+    val contactPartner: Option<ContactPartner> = None,
+    val childArticle: Option<PrimaryKey<Article>> = None,
+    val parentArticle: Option<PrimaryKey<Article>> = None
 ) {
     val hasChild
         get() = !childArticle.isEmpty()
@@ -30,5 +33,14 @@ data class Article(
 
 }
 
-fun Article.recurrentCopy() = copy()
+/**
+ * This function creates a child article for the article.
+ * The new article receives the current one as a reference in its parentArticle field.
+ * @receiver Article
+ * @return Article
+ */
+fun Article.recurrentCopy() = copy(
+    id = InitKey,
+    parentArticle = Some(id)
+)
 

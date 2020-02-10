@@ -2,6 +2,7 @@ package repository
 
 import arrow.core.None
 import arrow.core.Option
+import arrow.core.toOption
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +15,9 @@ import repository.ArticleRepository.byId
 import repository.ContactRepository.byId
 import repository.dao.ArticlesTable
 import repository.extensions.queryResultSet
+import java.util.*
 import kotlin.coroutines.CoroutineContext
+import kotlin.reflect.KProperty0
 
 internal typealias ArticleIndex = PrimaryKey<Article>
 
@@ -44,6 +47,7 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
         (countOf(query) to queryResultSet(query, limit, offset)
             .map { it.toArticle() }
                 ).let { (count, seq) -> QueryResult(count, seq) }
+
 
 
     override suspend fun update(entry: Article): Result<ArticleIndex> =
@@ -87,7 +91,7 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
 }
 
 
-internal suspend fun ResultRow.toArticle(): Article =
+internal suspend inline fun ResultRow.toArticle(): Article =
     Article(
         id = keyOf(this[ArticlesTable.id].value),
         name = this[ArticlesTable.name],
@@ -101,9 +105,8 @@ internal suspend fun ResultRow.toArticle(): Article =
         isRecurrent = this[ArticlesTable.isRecurrent],
         applicationDeadline = this[ArticlesTable.applicationDeadline],
         contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
-        childArticle = fromNullable(this[ArticlesTable.childArticle]) { byId(it) },
-        parentArticle = fromNullable(this[ArticlesTable.parentArticle]) { byId(it) }
-
+        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf<Article>(it) },
+        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf<Article>(it) }
     )
 
 
@@ -120,14 +123,12 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.isRecurrent] = isRecurrent
         this[ArticlesTable.applicationDeadline] = applicationDeadline
         this[ArticlesTable.contactPartner] = contactPartner.map { it.id.key }.orNull()
-        this[ArticlesTable.childArticle] = childArticle.map { it.id.key }.orNull()
-        this[ArticlesTable.parentArticle] = parentArticle.map { it.id.key }.orNull()
+        this[ArticlesTable.childArticle] = childArticle.map { it.key }.orNull()
+        this[ArticlesTable.parentArticle] = parentArticle.map { it.key }.orNull()
     }
-
-
 
 
 private suspend fun <T> fromNullable(
     id: Int?,
     res: suspend (PrimaryKey<T>) -> Option<T>
-): Option<T> = id?.let { res(keyOf(it)) } ?: None
+): Option<T> = if (id != null) res(keyOf(id)) else None
