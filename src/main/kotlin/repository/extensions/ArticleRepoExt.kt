@@ -24,7 +24,7 @@ internal suspend fun queryResultSet(
     offset: Int? = null,
     ordering: Ordering<DateTime, SortOrder> = orderOf { ArticlesTable.applicationDeadline to SortOrder.ASC }
 ) = newSuspendedTransaction(Dispatchers.IO) {
-    query.paginate(limit,offset)
+    query.paginate(limit, offset)
         .orderBy(ordering.ord)
 }
 
@@ -104,7 +104,7 @@ suspend fun Repository<Article>.createRecurrentArticles(): Result<Unit> =
 
             }
         }
-        .sequence(Either.applicative()).fix()
+        .sequence(Either.applicative()).fix() // Turns List<Either<L,R>> into Either<L,List<R>>
         .fold(
             ifLeft = ::left,
             ifRight = { Result.right(Unit) }

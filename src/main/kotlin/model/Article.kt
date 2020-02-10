@@ -4,8 +4,8 @@ import arrow.core.None
 import arrow.core.Option
 import arrow.core.Some
 import org.joda.time.DateTime
-import repository.None as InitKey
 import repository.PrimaryKey
+import repository.None as InitKey
 
 
 data class Article(
@@ -41,6 +41,9 @@ data class Article(
  */
 fun Article.recurrentCopy() = copy(
     id = InitKey,
-    parentArticle = Some(id)
+    parentArticle = Some(id),
+    childArticle = None
 )
+
+
 

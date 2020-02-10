@@ -31,7 +31,6 @@ class Ordering<T, S : SortOrder>(val ord: Pair<Column<T>, S>) {
 fun <T, S : SortOrder> orderOf(ord: () -> Pair<Column<T>, S>) = Ordering(ord())
 
 
-
 internal fun <T> kotlin.Result<T>.foldEither(): Result<T> = fold(
     onSuccess = ::Right,
     onFailure = { leftOf(it) }
@@ -47,4 +46,3 @@ internal inline fun <T> ResultRow?.asOption(builder: ResultRow.() -> T): Option<
     null -> None
     else -> this.builder() pipe ::Some
 }
-

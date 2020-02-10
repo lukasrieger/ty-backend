@@ -9,7 +9,6 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import repository.dao.ContactTable
 
 
-
 internal typealias ContactIndex = PrimaryKey<ContactPartner>
 
 object ContactRepository : Repository<ContactPartner> {

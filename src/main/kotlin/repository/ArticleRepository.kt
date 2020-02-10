@@ -11,13 +11,10 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
-import repository.ArticleRepository.byId
 import repository.ContactRepository.byId
 import repository.dao.ArticlesTable
 import repository.extensions.queryResultSet
-import java.util.*
 import kotlin.coroutines.CoroutineContext
-import kotlin.reflect.KProperty0
 
 internal typealias ArticleIndex = PrimaryKey<Article>
 
@@ -47,7 +44,6 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
         (countOf(query) to queryResultSet(query, limit, offset)
             .map { it.toArticle() }
                 ).let { (count, seq) -> QueryResult(count, seq) }
-
 
 
     override suspend fun update(entry: Article): Result<ArticleIndex> =
@@ -82,11 +78,22 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
     override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.runCatching {
+
+                // make sure that no references to the deleted entry are left in the table
+                update({ childArticle eq id.key }) {
+                    it[childArticle] = null
+                }
+                update({ parentArticle eq id.key }) {
+                    it[parentArticle] = null
+                }
+
                 deleteWhere { ArticlesTable.id eq id.key }
+
             }.mapCatching {
                 keyOf<Article>(it)
             }
         }.foldEither()
+
 
 }
 
