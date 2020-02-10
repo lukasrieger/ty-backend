@@ -7,6 +7,9 @@ import model.TargetGroup
 import org.jetbrains.exposed.dao.IntIdTable
 
 
+/**
+ * Table definition with rows that correspond to the properties of the [model.Article] type.
+ */
 object ArticlesTable : IntIdTable() {
     val name = text("name")
     val text = text("text")

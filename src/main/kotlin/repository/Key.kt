@@ -19,6 +19,7 @@ sealed class PrimaryKey<out T>(val key: Int) {
  * This state is always temporary and only present for newly created articles that have not yet been written to the
  * database.
  * The integer value of -1 is arbitrary and carries no special meaning other than the meaning of [None] itself.
+ * @see keyOf to construct an actual primary key that references an existing entry
  */
 internal object None : PrimaryKey<Nothing>(-1)
 

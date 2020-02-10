@@ -55,8 +55,8 @@ object ContactRepository : Repository<ContactPartner> {
                 insert {
                     entry.toStatement(it)
                 } get ContactTable.id
-            }.mapCatching {
-                entry.copy(id = keyOf(it.value))
+            }.mapCatching { (key) ->
+                entry.copy(id = keyOf(key))
             }
         }.foldEither()
 

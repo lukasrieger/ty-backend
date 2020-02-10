@@ -5,11 +5,11 @@ import arrow.core.Option
 import arrow.core.Some
 import org.joda.time.DateTime
 import repository.PrimaryKey
-import repository.None as InitKey
+import repository.None as NullKey
 
 
 data class Article(
-    val id: PrimaryKey<Article> = InitKey,
+    val id: PrimaryKey<Article> = NullKey,
     val name: String,
     val text: String,
     val rubric: Rubric,
@@ -40,7 +40,7 @@ data class Article(
  * @return Article
  */
 fun Article.recurrentCopy() = copy(
-    id = InitKey,
+    id = NullKey,
     parentArticle = Some(id),
     childArticle = None
 )

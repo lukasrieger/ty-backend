@@ -75,6 +75,6 @@ compileTestKotlin {
 
 
 dokka {
-    outputFormat = 'markdown'
+    outputFormat = 'html'
     outputDirectory = 'documentation'
 }
