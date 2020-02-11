@@ -4,11 +4,7 @@ import arrow.core.Option
 import org.jetbrains.exposed.sql.Query
 
 
-/**
- * Generic interface for any repository that handles interaction with the database for some type [T]
- * @param T
- */
-interface Repository<T> {
+interface ReadableRepository<T> {
 
     /**
      * Retrieve an entry from the database that matches the given [id].
@@ -29,6 +25,18 @@ interface Repository<T> {
      * @return QueryResult<T>
      */
     suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<T>
+
+    /**
+     * Returns the amount of entries in the database that match the given [query]
+     * @param query Query
+     * @return Int
+     */
+    suspend fun countOf(query: Query): Int
+
+}
+
+
+interface WriteableRepository<T> {
 
     /**
      * Modifies the given [entry] in the database.
@@ -56,12 +64,11 @@ interface Repository<T> {
      */
     suspend fun delete(id: PrimaryKey<T>): Result<PrimaryKey<T>>
 
-    /**
-     * Returns the amount of entries in the database that match the given [query]
-     * @param query Query
-     * @return Int
-     */
-    suspend fun countOf(query: Query): Int
-
-
 }
+
+/**
+ * Generic interface for any repository that handles interaction with the database for some type [T]
+ * This interface exposes writing and reading capabilities.
+ * @param T
+ */
+interface Repository<T> : ReadableRepository<T>, WriteableRepository<T>

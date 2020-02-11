@@ -38,7 +38,7 @@ internal suspend fun queryResultSet(
  * @param query Query
  * @return QueryResult<Article>
  */
-suspend fun Repository<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
+suspend fun ReadableRepository<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
     (countOf(query) to queryResultSet(query, limit, offset, orderOf {
         ArticlesTable.archiveDate to SortOrder.DESC
     })
@@ -77,7 +77,7 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
-suspend fun Repository<Article>.createRecurrentArticles(): Result<Unit> =
+suspend fun WriteableRepository<Article>.createRecurrentArticles(): Result<Unit> =
     newSuspendedTransaction(Dispatchers.IO) {
         ArticlesTable.select {
 
