@@ -10,7 +10,7 @@ import repository.None as NullKey
 
 data class Article(
     val id: PrimaryKey<Article> = NullKey,
-    val name: String,
+    val title: String,
     val text: String,
     val rubric: Rubric,
     val priority: Int,

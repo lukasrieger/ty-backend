@@ -36,7 +36,7 @@ object ArticleGenerator : Gen<Article> {
     override fun random(): Sequence<Article> = generateSequence {
         Article(
             id = keyOf(Gen.int().random().first()),
-            name = Gen.string().random().first(),
+            title = Gen.string().random().first(),
             text = Gen.string().random().first(),
             rubric = Gen.enum<Rubric>().random().first(),
             priority = Gen.int().random().first(),
