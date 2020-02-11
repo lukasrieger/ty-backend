@@ -36,7 +36,7 @@ interface ReadableRepository<T> {
 }
 
 
-interface WriteableRepository<T> {
+interface WritableRepository<T> {
 
     /**
      * Modifies the given [entry] in the database.
@@ -71,4 +71,4 @@ interface WriteableRepository<T> {
  * This interface exposes writing and reading capabilities.
  * @param T
  */
-interface Repository<T> : ReadableRepository<T>, WriteableRepository<T>
+interface Repository<T> : ReadableRepository<T>, WritableRepository<T>

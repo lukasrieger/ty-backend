@@ -77,7 +77,7 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
-suspend fun WriteableRepository<Article>.createRecurrentArticles(): Result<Unit> =
+suspend fun WritableRepository<Article>.createRecurrentArticles(): Result<Unit> =
     newSuspendedTransaction(Dispatchers.IO) {
         ArticlesTable.select {
 
