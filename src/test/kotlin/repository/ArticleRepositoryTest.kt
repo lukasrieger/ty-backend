@@ -42,13 +42,14 @@ object ArticleGenerator : Gen<Article> {
             priority = Gen.int().random().first(),
             targetGroup = Gen.enum<TargetGroup>().random().first(),
             supportType = Gen.enum<SupportType>().random().first(),
+            subject = Gen.enum<Subject>().random().first(),
             state = Gen.enum<ArticleState>().random().first(),
             archiveDate = DateTime.now(),
-            isRecurrent = Gen.bool().random().first(),
             applicationDeadline = DateTime.now(),
             contactPartner = None,
             childArticle = None,
-            parentArticle = None
+            parentArticle = None,
+            recurrentInfo = None
 
 
         )
