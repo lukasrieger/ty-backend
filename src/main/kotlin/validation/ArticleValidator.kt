@@ -52,9 +52,9 @@ fun Validator<ArticleValidationError, Article>.validate(
     archiveDate: DateTime,
     recurrentInfo: Option<RecurrentInfo>,
     applicationDeadline: DateTime,
-    contactPartner: Option<ContactPartner> = arrow.core.None,
-    childArticle: Option<PrimaryKey<Article>> = arrow.core.None,
-    parentArticle: Option<PrimaryKey<Article>> = arrow.core.None
+    contactPartner: Option<ContactPartner> = None,
+    childArticle: Option<PrimaryKey<Article>> = None,
+    parentArticle: Option<PrimaryKey<Article>> = None
 ) = Article(
     id,
     title,
