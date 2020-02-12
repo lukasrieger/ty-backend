@@ -16,19 +16,23 @@ data class Article(
     val priority: Int,
     val targetGroup: TargetGroup,
     val supportType: SupportType,
+    val subject: Subject,
     val state: ArticleState,
     val archiveDate: DateTime,
-    val isRecurrent: Boolean,
+    val recurrentInfo: Option<RecurrentInfo>,
     val applicationDeadline: DateTime,
     val contactPartner: Option<ContactPartner> = None,
     val childArticle: Option<PrimaryKey<Article>> = None,
     val parentArticle: Option<PrimaryKey<Article>> = None
 ) {
     val hasChild
-        get() = !childArticle.isEmpty()
+        get() = childArticle.isDefined()
 
     val hasParent
-        get() = !parentArticle.isEmpty()
+        get() = !parentArticle.isDefined()
+
+    val isRecurrent
+        get() = recurrentInfo.isDefined()
 
 
 }
@@ -46,4 +50,8 @@ fun Article.recurrentCopy() = copy(
 )
 
 
-
+data class RecurrentInfo(
+    val recurrentCheckFrom: DateTime,
+    val applicationDeadline: DateTime,
+    val archiveDate: DateTime
+)

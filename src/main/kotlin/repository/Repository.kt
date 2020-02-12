@@ -68,7 +68,7 @@ interface WritableRepository<T> {
 
 /**
  * Generic interface for any repository that handles interaction with the database for some type [T]
- * This interface exposes writing and reading capabilities.
+ * This interface exposes writing and reading capabilities by inheriting from [ReadableRepository] and [WritableRepository]
  * @param T
  */
 interface Repository<T> : ReadableRepository<T>, WritableRepository<T>

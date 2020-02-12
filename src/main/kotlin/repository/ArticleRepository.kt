@@ -2,11 +2,14 @@ package repository
 
 import arrow.core.None
 import arrow.core.Option
+import arrow.core.extensions.option.applicative.applicative
+import arrow.core.fix
 import arrow.core.toOption
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import model.Article
+import model.RecurrentInfo
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -17,6 +20,7 @@ import repository.extensions.queryResultSet
 import kotlin.coroutines.CoroutineContext
 
 internal typealias ArticleIndex = PrimaryKey<Article>
+
 
 object ArticleRepository : Repository<Article>, CoroutineScope {
 
@@ -98,6 +102,24 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
 }
 
 
+internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> {
+    val recurrentCheckFrom = row[ArticlesTable.recurrentCheckFrom].toOption()
+    val nextApplicationDeadLine = row[ArticlesTable.nextApplicationDeadline].toOption()
+    val nextArchiveDate = row[ArticlesTable.nextArchiveDate].toOption()
+
+
+    return Option.applicative().map(
+        recurrentCheckFrom,
+        nextApplicationDeadLine,
+        nextArchiveDate
+    ) { (rec, app, arch) ->
+        RecurrentInfo(rec, app, arch)
+    }.fix()
+
+
+}
+
+
 internal suspend inline fun ResultRow.toArticle(): Article =
     Article(
         id = keyOf(this[ArticlesTable.id].value),
@@ -107,9 +129,10 @@ internal suspend inline fun ResultRow.toArticle(): Article =
         priority = this[ArticlesTable.priority],
         targetGroup = this[ArticlesTable.targetGroup],
         supportType = this[ArticlesTable.supportType],
+        subject = this[ArticlesTable.subject],
         state = this[ArticlesTable.state],
         archiveDate = this[ArticlesTable.archiveDate],
-        isRecurrent = this[ArticlesTable.isRecurrent],
+        recurrentInfo = readRecurrence(this),
         applicationDeadline = this[ArticlesTable.applicationDeadline],
         contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
         childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf<Article>(it) },
@@ -125,13 +148,20 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.priority] = priority
         this[ArticlesTable.targetGroup] = targetGroup
         this[ArticlesTable.supportType] = supportType
+        this[ArticlesTable.subject] = subject
         this[ArticlesTable.state] = state
         this[ArticlesTable.archiveDate] = archiveDate
-        this[ArticlesTable.isRecurrent] = isRecurrent
         this[ArticlesTable.applicationDeadline] = applicationDeadline
         this[ArticlesTable.contactPartner] = contactPartner.map { it.id.key }.orNull()
         this[ArticlesTable.childArticle] = childArticle.map { it.key }.orNull()
         this[ArticlesTable.parentArticle] = parentArticle.map { it.key }.orNull()
+
+        this[ArticlesTable.isRecurrent] = recurrentInfo.isDefined()
+        this[ArticlesTable.recurrentCheckFrom] = recurrentInfo.map { it.recurrentCheckFrom }.orNull()
+        this[ArticlesTable.nextApplicationDeadline] = recurrentInfo.map { it.applicationDeadline }.orNull()
+        this[ArticlesTable.nextArchiveDate] = recurrentInfo.map { it.archiveDate }.orNull()
+
+
     }
 
 

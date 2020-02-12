@@ -19,7 +19,8 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>() {
     }
 
     internal val validApplicationDate = validation {
-        if (it.applicationDeadline.isAfterNow) {
+        val isBeforeArchiveDate = it.applicationDeadline.isBefore(it.archiveDate)
+        if (isBeforeArchiveDate) {
             it.valid()
         } else {
             ArticleValidationError.InvalidApplicationDate.invalid()

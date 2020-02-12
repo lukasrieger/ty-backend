@@ -1,9 +1,6 @@
 package repository.dao
 
-import model.ArticleState
-import model.Rubric
-import model.SupportType
-import model.TargetGroup
+import model.*
 import org.jetbrains.exposed.dao.IntIdTable
 
 
@@ -17,11 +14,16 @@ object ArticlesTable : IntIdTable() {
     val priority = integer("priority")
     val targetGroup = enumerationByName("targetGroup", 50, TargetGroup::class)
     val supportType = enumerationByName("supportType", 50, SupportType::class)
+    val subject = enumerationByName("subject", 50, Subject::class)
     val state = enumerationByName("state", 50, ArticleState::class)
     val archiveDate = date("archiveDate")
-    val isRecurrent = bool("isRecurrent")
     val applicationDeadline = date("applicationDeadline")
     val contactPartner = integer("contactPartner").references(ContactTable.id).nullable()
     val childArticle = integer("childArticle").references(id).nullable()
     val parentArticle = integer("parentArticle").references(id).nullable()
+
+    val isRecurrent = bool("isRecurrent")
+    val recurrentCheckFrom = date("recurrentCheckFrom").nullable()
+    val nextApplicationDeadline = date("nextApplicationDeadline").nullable()
+    val nextArchiveDate = date("archiveDate").nullable()
 }
