@@ -8,7 +8,7 @@ import org.jetbrains.exposed.dao.IntIdTable
  * Table definition with rows that correspond to the properties of the [model.Article] type.
  */
 object ArticlesTable : IntIdTable() {
-    val name = text("name")
+    val title = text("title")
     val text = text("text")
     val rubric = enumerationByName("rubric", 50, Rubric::class)
     val priority = integer("priority")

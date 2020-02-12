@@ -123,7 +123,7 @@ internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> {
 internal suspend inline fun ResultRow.toArticle(): Article =
     Article(
         id = keyOf(this[ArticlesTable.id].value),
-        title = this[ArticlesTable.name],
+        title = this[ArticlesTable.title],
         text = this[ArticlesTable.text],
         rubric = this[ArticlesTable.rubric],
         priority = this[ArticlesTable.priority],
@@ -142,7 +142,7 @@ internal suspend inline fun ResultRow.toArticle(): Article =
 
 private fun Article.toStatement(statement: UpdateBuilder<Int>) =
     statement.run {
-        this[ArticlesTable.name] = title
+        this[ArticlesTable.title] = title
         this[ArticlesTable.text] = text
         this[ArticlesTable.rubric] = rubric
         this[ArticlesTable.priority] = priority
