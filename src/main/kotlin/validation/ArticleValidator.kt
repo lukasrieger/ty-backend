@@ -4,7 +4,10 @@ import arrow.core.*
 import arrow.core.extensions.list.traverse.traverse
 import arrow.core.extensions.nonemptylist.semigroup.semigroup
 import arrow.core.extensions.validated.applicative.applicative
-import model.Article
+import arrow.syntax.function.pipe
+import model.*
+import org.joda.time.DateTime
+import repository.PrimaryKey
 
 
 object ArticleValidator : AbstractValidator<ArticleValidationError, Article>() {
@@ -34,3 +37,38 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>() {
 
 
 }
+
+
+fun Validator<ArticleValidationError, Article>.validate(
+    id: PrimaryKey<Article> = repository.None,
+    title: String,
+    text: String,
+    rubric: Rubric,
+    priority: Int,
+    targetGroup: TargetGroup,
+    supportType: SupportType,
+    subject: Subject,
+    state: ArticleState,
+    archiveDate: DateTime,
+    recurrentInfo: Option<RecurrentInfo>,
+    applicationDeadline: DateTime,
+    contactPartner: Option<ContactPartner> = arrow.core.None,
+    childArticle: Option<PrimaryKey<Article>> = arrow.core.None,
+    parentArticle: Option<PrimaryKey<Article>> = arrow.core.None
+) = Article(
+    id,
+    title,
+    text,
+    rubric,
+    priority,
+    targetGroup,
+    supportType,
+    subject,
+    state,
+    archiveDate,
+    recurrentInfo,
+    applicationDeadline,
+    contactPartner,
+    childArticle,
+    parentArticle
+) pipe ::validate
