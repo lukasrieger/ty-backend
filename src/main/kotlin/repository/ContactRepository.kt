@@ -11,12 +11,7 @@ import repository.dao.ContactTable
 
 internal typealias ContactIndex = PrimaryKey<ContactPartner>
 
-object ContactRepository : Repository<ContactPartner> {
-
-    init {
-        SchemaUtils.create(ContactTable)
-    }
-
+object ContactReader : ReadableRepository<ContactPartner> {
     override suspend fun byId(id: PrimaryKey<ContactPartner>): Option<ContactPartner> =
         newSuspendedTransaction(Dispatchers.IO) {
             val (key) = id
@@ -25,7 +20,7 @@ object ContactRepository : Repository<ContactPartner> {
         }.asOption(ResultRow::toContactPartner)
 
     override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<ContactPartner> =
-        (countOf(query) to
+        (ContactRepository.countOf(query) to
                 newSuspendedTransaction(Dispatchers.IO) {
                     query
                         .also { query ->
@@ -37,6 +32,14 @@ object ContactRepository : Repository<ContactPartner> {
                 }
                 ).let { (count, seq) -> QueryResult(count, seq) }
 
+
+    override suspend fun countOf(query: Query): Int = newSuspendedTransaction(Dispatchers.IO) {
+        query.count()
+    }
+
+}
+
+object ContactWriter : WritableRepository<ContactPartner> {
 
     override suspend fun update(entry: ContactPartner): Result<ContactIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
@@ -71,11 +74,13 @@ object ContactRepository : Repository<ContactPartner> {
             }
         }.foldEither()
 
-    override suspend fun countOf(query: Query): Int = newSuspendedTransaction(Dispatchers.IO) {
-        query.count()
-    }
 
 }
+
+object ContactRepository :
+    ReadableRepository<ContactPartner> by ContactReader,
+    WritableRepository<ContactPartner> by ContactWriter,
+    Repository<ContactPartner>
 
 
 internal fun ResultRow.toContactPartner() =

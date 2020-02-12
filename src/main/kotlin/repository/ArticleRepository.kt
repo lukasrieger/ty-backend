@@ -5,35 +5,29 @@ import arrow.core.Option
 import arrow.core.extensions.option.applicative.applicative
 import arrow.core.fix
 import arrow.core.toOption
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.koin.dsl.module
 import repository.ContactRepository.byId
 import repository.dao.ArticlesTable
 import repository.extensions.queryResultSet
-import kotlin.coroutines.CoroutineContext
+
+
+val articleModule = module {
+
+    single<ReadableRepository<Article>> { ArticleReader }
+    single<WritableRepository<Article>> { ArticleWriter }
+    single<Repository<Article>> { ArticleRepository }
+}
 
 internal typealias ArticleIndex = PrimaryKey<Article>
 
 
-object ArticleRepository : Repository<Article>, CoroutineScope {
-
-
-    override val coroutineContext: CoroutineContext
-        get() = Dispatchers.Default + CoroutineName("ArticleRepository")
-
-    init {
-        transaction {
-            SchemaUtils.create(ArticlesTable)
-        }
-    }
-
+object ArticleReader : ReadableRepository<Article> {
 
     override suspend fun byId(id: PrimaryKey<Article>): Option<Article> =
         newSuspendedTransaction(Dispatchers.IO) {
@@ -43,12 +37,21 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
                 .asOption(ResultRow::toArticle)
         }
 
+    override suspend fun countOf(query: Query): Int =
+        newSuspendedTransaction(Dispatchers.IO) {
+            query.count()
+        }
+
 
     override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> =
-        (countOf(query) to queryResultSet(query, limit, offset)
+        (ArticleRepository.countOf(query) to queryResultSet(query, limit, offset)
             .map { it.toArticle() }
                 ).let { (count, seq) -> QueryResult(count, seq) }
 
+}
+
+
+object ArticleWriter : WritableRepository<Article> {
 
     override suspend fun update(entry: Article): Result<ArticleIndex> =
         newSuspendedTransaction(Dispatchers.IO) {
@@ -71,12 +74,6 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
                 entry.copy(id = keyOf(it.value))
             }
         }.foldEither()
-
-
-    override suspend fun countOf(query: Query): Int =
-        newSuspendedTransaction(Dispatchers.IO) {
-            query.count()
-        }
 
 
     override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> =
@@ -102,22 +99,21 @@ object ArticleRepository : Repository<Article>, CoroutineScope {
 }
 
 
-internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> {
-    val recurrentCheckFrom = row[ArticlesTable.recurrentCheckFrom].toOption()
-    val nextApplicationDeadLine = row[ArticlesTable.nextApplicationDeadline].toOption()
-    val nextArchiveDate = row[ArticlesTable.nextArchiveDate].toOption()
+object ArticleRepository :
+    ReadableRepository<Article> by ArticleReader,
+    WritableRepository<Article> by ArticleWriter,
+    Repository<Article>
 
 
-    return Option.applicative().map(
-        recurrentCheckFrom,
-        nextApplicationDeadLine,
-        nextArchiveDate
-    ) { (rec, app, arch) ->
-        RecurrentInfo(rec, app, arch)
-    }.fix()
-
-
-}
+internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> =
+    Option.applicative()
+        .map(
+            row[ArticlesTable.recurrentCheckFrom].toOption(),
+            row[ArticlesTable.nextApplicationDeadline].toOption(),
+            row[ArticlesTable.nextArchiveDate].toOption()
+        ) { (rec, app, arch) ->
+            RecurrentInfo(rec, app, arch)
+        }.fix()
 
 
 internal suspend inline fun ResultRow.toArticle(): Article =

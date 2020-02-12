@@ -25,5 +25,5 @@ object ArticlesTable : IntIdTable() {
     val isRecurrent = bool("isRecurrent")
     val recurrentCheckFrom = date("recurrentCheckFrom").nullable()
     val nextApplicationDeadline = date("nextApplicationDeadline").nullable()
-    val nextArchiveDate = date("archiveDate").nullable()
+    val nextArchiveDate = date("nextArchiveDate").nullable()
 }

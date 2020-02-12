@@ -18,15 +18,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import model.*
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
 import org.joda.time.DateTime
-import org.koin.dsl.module
 import org.koin.test.KoinTest
 import org.koin.test.inject
+import repository.dao.ArticlesTable
+import repository.dao.ContactTable
 import kotlin.coroutines.CoroutineContext
+import kotlin.system.measureTimeMillis
 
 object TestDbSettings {
-    fun setup() = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver").also {
-        it.useNestedTransactions = true
+    fun setup() {
+        Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver").also {
+            it.useNestedTransactions = true
+        }
+        SchemaUtils.create(ArticlesTable)
+        SchemaUtils.create(ContactTable)
     }
 }
 
@@ -58,15 +65,9 @@ object ArticleGenerator : Gen<Article> {
 }
 
 
-val testModule = module {
-    single<Repository<Article>> {
-        ArticleRepository
-    }
-}
-
 class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
-    override fun listeners() = listOf(KoinListener(testModule))
+    override fun listeners() = listOf(KoinListener(articleModule))
 
     private val repo: Repository<Article> by inject()
 
@@ -78,19 +79,23 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
         TestDbSettings.setup()
         "Articles can that were created can immediately be read " {
-            assertAll(ArticleGenerator) { article: Article ->
-                runBlocking {
-                    val keyResult = repo.create(article)
-                    keyResult.shouldBeRight()
+            val time = measureTimeMillis {
+                assertAll(ArticleGenerator) { article: Article ->
+                    runBlocking {
+                        val keyResult = repo.create(article)
+                        keyResult.shouldBeRight()
 
-                    val (createdArticle) = keyResult as Right<Article>
-                    val art = repo.byId(createdArticle.id)
+                        val (createdArticle) = keyResult as Right<Article>
+                        val art = repo.byId(createdArticle.id)
 
-                    art.shouldNotBeNone()
+                        art.shouldNotBeNone()
 
 
+                    }
                 }
             }
+            println(time)
+
         }
 
         "Querying a non existent article never throws an exception" {
