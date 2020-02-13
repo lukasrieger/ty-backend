@@ -111,9 +111,7 @@ internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> =
             row[ArticlesTable.recurrentCheckFrom].toOption(),
             row[ArticlesTable.nextApplicationDeadline].toOption(),
             row[ArticlesTable.nextArchiveDate].toOption()
-        ) { (rec, app, arch) ->
-            RecurrentInfo(rec, app, arch)
-        }.fix()
+        ) { (rec, app, arch) -> RecurrentInfo(rec, app, arch) }.fix()
 
 
 internal suspend inline fun ResultRow.toArticle(): Article =

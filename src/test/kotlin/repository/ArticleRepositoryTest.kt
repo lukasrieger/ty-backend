@@ -67,7 +67,7 @@ object ArticleGenerator : Gen<Article> {
 
 class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
-    override fun listeners() = listOf(KoinListener(articleModule))
+    override fun listeners() = listOf(KoinListener(listOf(articleModule, contactModule)))
 
     private val repo: Repository<Article> by inject()
 

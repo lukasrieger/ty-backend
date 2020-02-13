@@ -6,8 +6,15 @@ import model.ContactPartner
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.koin.dsl.module
 import repository.dao.ContactTable
 
+val contactModule = module {
+
+    single<ReadableRepository<ContactPartner>> { ContactReader }
+    single<WritableRepository<ContactPartner>> { ContactWriter }
+    single<Repository<ContactPartner>> { ContactRepository }
+}
 
 internal typealias ContactIndex = PrimaryKey<ContactPartner>
 
