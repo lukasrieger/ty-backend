@@ -1,5 +1,6 @@
 package repository
 
+import arrow.core.Either
 import arrow.core.Option
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
@@ -11,14 +12,14 @@ import repository.dao.ContactTable
 
 val contactModule = module {
 
-    single<ReadableRepository<ContactPartner>> { ContactReader }
-    single<WritableRepository<ContactPartner>> { ContactWriter }
-    single<Repository<ContactPartner>> { ContactRepository }
+    single { ContactReader }
+    single { ContactWriter }
+    single { ContactRepository }
 }
 
 internal typealias ContactIndex = PrimaryKey<ContactPartner>
 
-object ContactReader : ReadableRepository<ContactPartner> {
+object ContactReader : Reader<ContactPartner> {
     override suspend fun byId(id: PrimaryKey<ContactPartner>): Option<ContactPartner> =
         newSuspendedTransaction(Dispatchers.IO) {
             val (key) = id
@@ -46,58 +47,55 @@ object ContactReader : ReadableRepository<ContactPartner> {
 
 }
 
-object ContactWriter : WritableRepository<ContactPartner> {
+object ContactWriter : Writer<ContactPartner> {
 
-    override suspend fun update(entry: ContactPartner): Result<ContactIndex> =
+    override suspend fun update(entry: ContactPartner): Result<ContactIndex> = Either.catch {
         newSuspendedTransaction(Dispatchers.IO) {
             val (key) = entry.id
-            ContactTable.runCatching {
-                update({ ContactTable.id eq key }) { entry.toStatement(it) }
-            }.mapCatching {
-                keyOf<ContactPartner>(it)
+            ContactTable.run {
+                update({ id eq key }) { entry.toStatement(it) }
             }
-        }.foldEither()
+        }
+    }.map { keyOf<ContactPartner>(it) }
 
 
-    override suspend fun create(entry: ContactPartner): Result<ContactPartner> =
+    override suspend fun create(entry: ContactPartner): Result<ContactPartner> = Either.catch {
         newSuspendedTransaction(Dispatchers.IO) {
-            ContactTable.runCatching {
+            ContactTable.run {
                 insert {
                     entry.toStatement(it)
-                } get ContactTable.id
-            }.mapCatching { (key) ->
-                entry.copy(id = keyOf(key))
+                } get id
             }
-        }.foldEither()
+        }
+    }.map { (key) -> entry.copy(id = keyOf(key)) }
 
-    override suspend fun delete(id: PrimaryKey<ContactPartner>): Result<ContactIndex> =
+
+    override suspend fun delete(id: PrimaryKey<ContactPartner>): Result<ContactIndex> = Either.catch {
         newSuspendedTransaction(Dispatchers.IO) {
-            ContactTable.runCatching {
+            ContactTable.run {
                 deleteWhere {
                     ContactTable.id eq id.key
                 }
-            }.mapCatching {
-                keyOf<ContactPartner>(it)
             }
-        }.foldEither()
+        }
+    }.map { keyOf<ContactPartner>(it) }
 
 
 }
 
 object ContactRepository :
-    ReadableRepository<ContactPartner> by ContactReader,
-    WritableRepository<ContactPartner> by ContactWriter,
+    Reader<ContactPartner> by ContactReader,
+    Writer<ContactPartner> by ContactWriter,
     Repository<ContactPartner>
 
 
-internal fun ResultRow.toContactPartner() =
-    ContactPartner(
-        id = keyOf(this[ContactTable.id].value),
-        surname = this[ContactTable.firstName],
-        lastname = this[ContactTable.lastName],
-        phoneNumber = this[ContactTable.phoneNumber],
-        url = this[ContactTable.url]
-    )
+internal fun ResultRow.toContactPartner(): ContactPartner = ContactPartner(
+    id = keyOf(this[ContactTable.id].value),
+    surname = this[ContactTable.firstName],
+    lastname = this[ContactTable.lastName],
+    phoneNumber = this[ContactTable.phoneNumber],
+    url = this[ContactTable.url]
+)
 
 private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
     statement.run {

@@ -4,7 +4,7 @@ import arrow.core.Option
 import org.jetbrains.exposed.sql.Query
 
 
-interface ReadableRepository<T> {
+interface Reader<T> {
 
     /**
      * Retrieve an entry from the database that matches the given [id].
@@ -36,7 +36,7 @@ interface ReadableRepository<T> {
 }
 
 
-interface WritableRepository<T> {
+interface Writer<T> {
 
     /**
      * Modifies the given [entry] in the database.
@@ -68,8 +68,8 @@ interface WritableRepository<T> {
 
 /**
  * Generic interface for any repository that handles interaction with the database for some type [T].
- * This interface exposes writing and reading capabilities by inheriting from [ReadableRepository] and [WritableRepository].
- * Any class that wants to implement this interface has to be a [ReadableRepository] and a [WritableRepository]
+ * This interface exposes writing and reading capabilities by inheriting from [Reader] and [Writer].
+ * Any class that wants to implement this interface has to be a [Reader] and a [Writer]
  * @param T
  */
-interface Repository<T> : ReadableRepository<T>, WritableRepository<T>
+interface Repository<T> : Reader<T>, Writer<T>

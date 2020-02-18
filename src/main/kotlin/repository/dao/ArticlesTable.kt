@@ -1,7 +1,8 @@
 package repository.dao
 
 import model.*
-import org.jetbrains.exposed.dao.IntIdTable
+import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.jodatime.date
 
 
 /**
@@ -18,12 +19,13 @@ object ArticlesTable : IntIdTable() {
     val state = enumerationByName("state", 50, ArticleState::class)
     val archiveDate = date("archiveDate")
     val applicationDeadline = date("applicationDeadline")
-    val contactPartner = integer("contactPartner").references(ContactTable.id).nullable()
-    val childArticle = integer("childArticle").references(id).nullable()
-    val parentArticle = integer("parentArticle").references(id).nullable()
+    val contactPartner = integer("contactPartner").nullable()
+    val childArticle = integer("childArticle").nullable()
+    val parentArticle = integer("parentArticle").nullable()
 
     val isRecurrent = bool("isRecurrent")
     val recurrentCheckFrom = date("recurrentCheckFrom").nullable()
     val nextApplicationDeadline = date("nextApplicationDeadline").nullable()
     val nextArchiveDate = date("nextArchiveDate").nullable()
+
 }

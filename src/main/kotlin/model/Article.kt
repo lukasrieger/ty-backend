@@ -37,6 +37,7 @@ data class Article(
 
 }
 
+
 /**
  * This function creates a child article for the article.
  * The new article receives the current one as a reference in its parentArticle field.

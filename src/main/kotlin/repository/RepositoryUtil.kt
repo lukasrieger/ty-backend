@@ -1,11 +1,11 @@
 package repository
 
-import arrow.core.*
+import arrow.core.Either
 import arrow.core.None
+import arrow.core.Option
+import arrow.core.Some
 import arrow.syntax.function.pipe
-import model.error.QueryException
-import model.error.leftOf
-import org.jetbrains.exposed.dao.EntityID
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
@@ -21,13 +21,15 @@ import org.jetbrains.exposed.sql.SortOrder
  * @property result Collection<T>
  * @constructor
  */
-data class QueryResult<T>(val count: Int, val result: Collection<T>)
+class QueryResult<T>(val count: Int, val result: Collection<T>) {
+    operator fun component1() = result
+}
 
 
 /**
  * Convenient alias for the Either type. Heavily used by the repository layer.
  */
-typealias Result<T> = Either<QueryException, T>
+typealias Result<T> = Either<Throwable, T>
 
 /**
  * This class describes an arbitrary ordering over some column of a table.
@@ -49,16 +51,6 @@ class Ordering<T, S : SortOrder>(val ord: Pair<Column<T>, S>) {
  */
 fun <T, S : SortOrder> orderOf(ord: () -> Pair<Column<T>, S>) = Ordering(ord())
 
-/**
- * Lifts the receiver from the general kotlin.Result type into our own Result type
- * (which is currently just a typealias around arrows Either).
- * @receiver kotlin.Result<T>
- * @return Result<T>
- */
-internal fun <T> kotlin.Result<T>.foldEither(): Result<T> = fold(
-    onSuccess = ::Right,
-    onFailure = { leftOf(it) }
-)
 
 /**
  * Attempts to construct some type [T] from the receiver ResultRow.

@@ -1,9 +1,9 @@
 package repository
 
+import arrow.core.Either
 import arrow.core.None
 import arrow.core.Option
-import arrow.core.extensions.option.applicative.applicative
-import arrow.core.fix
+import arrow.core.extensions.fx
 import arrow.core.toOption
 import kotlinx.coroutines.Dispatchers
 import model.Article
@@ -19,15 +19,15 @@ import repository.extensions.queryResultSet
 
 val articleModule = module {
 
-    single<ReadableRepository<Article>> { ArticleReader }
-    single<WritableRepository<Article>> { ArticleWriter }
-    single<Repository<Article>> { ArticleRepository }
+    single { ArticleReader }
+    single { ArticleWriter }
+    single { ArticleRepository }
 }
 
 internal typealias ArticleIndex = PrimaryKey<Article>
 
 
-object ArticleReader : ReadableRepository<Article> {
+object ArticleReader : Reader<Article> {
 
     override suspend fun byId(id: PrimaryKey<Article>): Option<Article> =
         newSuspendedTransaction(Dispatchers.IO) {
@@ -51,34 +51,32 @@ object ArticleReader : ReadableRepository<Article> {
 }
 
 
-object ArticleWriter : WritableRepository<Article> {
+object ArticleWriter : Writer<Article> {
 
-    override suspend fun update(entry: Article): Result<ArticleIndex> =
+    override suspend fun update(entry: Article): Result<ArticleIndex> = Either.catch {
         newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.runCatching {
+            ArticlesTable.run {
                 val (key) = entry.id
                 update({ ArticlesTable.id eq key }) { entry.toStatement(it) }
-            }.mapCatching {
-                keyOf<Article>(it)
             }
-        }.foldEither()
+        }
+    }.map { keyOf<Article>(it) }
 
 
-    override suspend fun create(entry: Article): Result<Article> =
+    override suspend fun create(entry: Article): Result<Article> = Either.catch {
         newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.runCatching {
+            ArticlesTable.run {
                 insert {
                     entry.toStatement(it)
                 } get ArticlesTable.id
-            }.mapCatching {
-                entry.copy(id = keyOf(it.value))
             }
-        }.foldEither()
+        }
+    }.map { entry.copy(id = keyOf(it.value)) }
 
 
-    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> =
+    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = Either.catch {
         newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.runCatching {
+            ArticlesTable.run {
 
                 // make sure that no references to the deleted entry are left in the table
                 update({ childArticle eq id.key }) {
@@ -90,28 +88,27 @@ object ArticleWriter : WritableRepository<Article> {
 
                 deleteWhere { ArticlesTable.id eq id.key }
 
-            }.mapCatching {
-                keyOf<Article>(it)
             }
-        }.foldEither()
+        }
+    }.map { keyOf<Article>(it) }
 
 
 }
 
 
 object ArticleRepository :
-    ReadableRepository<Article> by ArticleReader,
-    WritableRepository<Article> by ArticleWriter,
+    Reader<Article> by ArticleReader,
+    Writer<Article> by ArticleWriter,
     Repository<Article>
 
 
-internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> =
-    Option.applicative()
-        .map(
-            row[ArticlesTable.recurrentCheckFrom].toOption(),
-            row[ArticlesTable.nextApplicationDeadline].toOption(),
-            row[ArticlesTable.nextArchiveDate].toOption()
-        ) { (rec, app, arch) -> RecurrentInfo(rec, app, arch) }.fix()
+internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> = Option.fx {
+    val (rec) = row[ArticlesTable.recurrentCheckFrom].toOption()
+    val (app) = row[ArticlesTable.nextApplicationDeadline].toOption()
+    val (arch) = row[ArticlesTable.nextArchiveDate].toOption()
+
+    RecurrentInfo(rec, app, arch)
+}
 
 
 internal suspend inline fun ResultRow.toArticle(): Article =
@@ -154,7 +151,6 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.recurrentCheckFrom] = recurrentInfo.map { it.recurrentCheckFrom }.orNull()
         this[ArticlesTable.nextApplicationDeadline] = recurrentInfo.map { it.applicationDeadline }.orNull()
         this[ArticlesTable.nextArchiveDate] = recurrentInfo.map { it.archiveDate }.orNull()
-
 
     }
 

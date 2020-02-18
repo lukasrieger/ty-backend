@@ -2,13 +2,11 @@ package repository.extensions
 
 import arrow.core.Either
 import arrow.core.Either.Companion.left
-import arrow.core.Right
 import arrow.core.extensions.either.applicative.applicative
 import arrow.core.extensions.list.traverse.sequence
 import arrow.core.fix
 import kotlinx.coroutines.Dispatchers
 import model.Article
-import model.error.leftOf
 import model.recurrentCopy
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateStatement
@@ -38,7 +36,7 @@ internal suspend fun queryResultSet(
  * @param query Query
  * @return QueryResult<Article>
  */
-suspend fun ReadableRepository<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
+suspend fun Reader<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
     (countOf(query) to queryResultSet(query, limit, offset, orderOf {
         ArticlesTable.archiveDate to SortOrder.DESC
     })
@@ -47,20 +45,16 @@ suspend fun ReadableRepository<Article>.byQueryArchived(limit: Int?, offset: Int
             ).let { (count, seq) -> QueryResult(count, seq) }
 
 
-private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Result<ArticleIndex> =
+private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Result<ArticleIndex> = Either.catch {
     newSuspendedTransaction(Dispatchers.IO) {
-        ArticlesTable.runCatching {
+        ArticlesTable.run {
             update({ ArticlesTable.id eq id }) {
                 it.run(statement)
             }
-        }.mapCatching {
-            keyOf<Article>(it)
-        }.fold(
-            onSuccess = ::Right,
-            onFailure = { leftOf<ArticleIndex>(it) }
-        )
-
+        }
     }
+}.map { keyOf<Article>(it) }
+
 
 /**
  * This function is rather complex.
@@ -77,7 +71,7 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
-suspend fun WritableRepository<Article>.createRecurrentArticles(): Result<Unit> =
+suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
     newSuspendedTransaction(Dispatchers.IO) {
         ArticlesTable.select {
 

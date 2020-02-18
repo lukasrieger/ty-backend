@@ -13,7 +13,7 @@ import repository.PrimaryKey
 object ArticleValidator : AbstractValidator<ArticleValidationError, Article>() {
 
 
-    internal val validTitle = validation {
+    val validTitle = validation {
         if (it.title.isNotBlank()) {
             it.valid()
         } else {
@@ -21,7 +21,7 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>() {
         }
     }
 
-    internal val validApplicationDate = validation {
+    val validApplicationDate = validation {
         val isBeforeArchiveDate = it.applicationDeadline.isBefore(it.archiveDate)
         if (isBeforeArchiveDate) {
             it.valid()

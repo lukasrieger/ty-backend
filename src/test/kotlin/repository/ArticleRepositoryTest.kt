@@ -57,8 +57,6 @@ object ArticleGenerator : Gen<Article> {
             childArticle = None,
             parentArticle = None,
             recurrentInfo = None
-
-
         )
     }
 
@@ -69,7 +67,7 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
     override fun listeners() = listOf(KoinListener(listOf(articleModule, contactModule)))
 
-    private val repo: Repository<Article> by inject()
+    private val repo: ArticleRepository by inject()
 
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + CoroutineName("ArticleRepositoryTest")
