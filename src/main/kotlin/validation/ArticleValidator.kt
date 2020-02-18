@@ -4,13 +4,17 @@ import arrow.core.*
 import arrow.core.extensions.list.traverse.traverse
 import arrow.core.extensions.nonemptylist.semigroup.semigroup
 import arrow.core.extensions.validated.applicative.applicative
-import arrow.syntax.function.pipe
 import model.*
 import org.joda.time.DateTime
+import org.koin.core.KoinComponent
+import org.koin.core.inject
+import repository.ArticleReader
 import repository.PrimaryKey
 
 
-object ArticleValidator : AbstractValidator<ArticleValidationError, Article>() {
+object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), KoinComponent {
+
+    private val articleReader: ArticleReader by inject()
 
 
     val validTitle = validation {
@@ -30,16 +34,44 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>() {
         }
     }
 
+    val validParentArticle = validation { article ->
+        article.parentArticle.fold(
+            ifEmpty = { article.valid() }, // we treat the absence of a parent article as valid for now.
+            ifSome = { key ->
+                articleReader.byId(key).fold(
+                    ifEmpty = { ArticleValidationError.MissingArticle(key).invalid() },
+                    ifSome = { parent ->
+                        parent.childArticle.fold(
+                            ifEmpty = { ArticleValidationError.AsymmetricRelation(parent, article).invalid() },
+                            ifSome = {
+                                if (it == article.id) {
+                                    article.valid()
+                                } else {
+                                    ArticleValidationError.InvalidRelation(parent, article).invalid()
+                                }
+                            }
+                        )
+                    }
+                )
 
-    override fun validate(value: Article): ValidatedNel<ArticleValidationError, Article> = validators
-        .traverse(ValidatedNel.applicative(Nel.semigroup<ArticleValidationError>())) { it(value) }.fix()
-        .map { value }
+
+            })
+
+
+    }
+
+
+    override suspend fun validate(value: Article): ValidatedNel<ArticleValidationError, Article> =
+        validators
+            .map { it(value) }
+            .traverse(ValidatedNel.applicative(Nel.semigroup<ArticleValidationError>()), ::identity).fix()
+            .map { value }
 
 
 }
 
 
-fun Validator<ArticleValidationError, Article>.validate(
+suspend fun Validator<ArticleValidationError, Article>.validate(
     id: PrimaryKey<Article> = repository.None,
     title: String,
     text: String,
@@ -55,20 +87,22 @@ fun Validator<ArticleValidationError, Article>.validate(
     contactPartner: Option<ContactPartner> = None,
     childArticle: Option<PrimaryKey<Article>> = None,
     parentArticle: Option<PrimaryKey<Article>> = None
-) = Article(
-    id,
-    title,
-    text,
-    rubric,
-    priority,
-    targetGroup,
-    supportType,
-    subject,
-    state,
-    archiveDate,
-    recurrentInfo,
-    applicationDeadline,
-    contactPartner,
-    childArticle,
-    parentArticle
-) pipe ::validate
+) = validate(
+    Article(
+        id,
+        title,
+        text,
+        rubric,
+        priority,
+        targetGroup,
+        supportType,
+        subject,
+        state,
+        archiveDate,
+        recurrentInfo,
+        applicationDeadline,
+        contactPartner,
+        childArticle,
+        parentArticle
+    )
+)

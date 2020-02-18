@@ -4,7 +4,7 @@ import arrow.core.Validated
 import arrow.core.ValidatedNel
 
 
-typealias ValidatorFunction<E, T> = (T) -> ValidatedNel<E, T>
+typealias ValidatorFunction<E, T> = suspend (T) -> ValidatedNel<E, T>
 
 interface Validator<E, T> {
     /**
@@ -12,15 +12,16 @@ interface Validator<E, T> {
      * @param value T
      * @return Validated<E,T>
      */
-    fun validate(value: T): ValidatedNel<E, T>
+    suspend fun validate(value: T): ValidatedNel<E, T>
 }
 
 abstract class AbstractValidator<E, T> : Validator<E, T> {
 
     protected val validators: MutableList<ValidatorFunction<E, T>> = mutableListOf()
 
-    protected inline fun validation(crossinline f: (T) -> Validated<E, T>): (T) -> ValidatedNel<E, T> {
-        val validatingFunc = { t: T -> f(t).toValidatedNel() }
+    protected fun validation(f: suspend (T) -> Validated<E, T>): suspend (T) -> ValidatedNel<E, T> {
+        val validatingFunc: suspend (T) -> ValidatedNel<E, T> = { t: T -> f(t).toValidatedNel() }
+
         validators += (validatingFunc)
 
         return validatingFunc
