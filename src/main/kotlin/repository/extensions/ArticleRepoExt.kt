@@ -19,14 +19,14 @@ import repository.*
 import repository.dao.ArticlesTable
 
 
-internal suspend fun queryResultSet(
+internal suspend fun queryPaginate(
     query: Query,
     limit: Int? = null,
     offset: Int? = null,
-    ordering: Ordering<DateTime, SortOrder> = orderOf { ArticlesTable.applicationDeadline to SortOrder.ASC }
+    ordering: () -> Pair<Column<DateTime>, SortOrder> = { ArticlesTable.applicationDeadline to SortOrder.ASC }
 ) = newSuspendedTransaction(Dispatchers.IO) {
     query.paginate(limit, offset)
-        .orderBy(ordering.ord)
+        .orderBy(ordering())
 }
 
 /**
@@ -39,13 +39,17 @@ internal suspend fun queryResultSet(
  * @param query Query
  * @return QueryResult<Article>
  */
-suspend fun Reader<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> =
-    (countOf(query) to queryResultSet(query, limit, offset, orderOf {
+suspend fun Reader<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> {
+    val count = countOf(query)
+
+    val queryResult = queryPaginate(query, limit, offset) {
         ArticlesTable.archiveDate to SortOrder.DESC
-    })
+    }
         .andWhere { ArticlesTable.archiveDate less DateTime.now() }
         .map { it.toArticle() }
-            ).let { (count, seq) -> QueryResult(count, seq) }
+
+    return QueryResult(count, queryResult)
+}
 
 
 private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Result<ArticleIndex> = Either.catch {

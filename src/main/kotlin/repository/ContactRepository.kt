@@ -19,8 +19,8 @@ val contactModule = module {
 }
 
 typealias ContactIndex = PrimaryKey<ContactPartner>
-
 typealias ValidContact = Valid<ContactPartner>
+
 
 object ContactReader : Reader<ContactPartner> {
     override suspend fun byId(id: PrimaryKey<ContactPartner>): Option<ContactPartner> =

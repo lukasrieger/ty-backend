@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.koin.dsl.module
 import repository.ContactRepository.byId
 import repository.dao.ArticlesTable
-import repository.extensions.queryResultSet
+import repository.extensions.queryPaginate
 
 
 val articleModule = module {
@@ -44,7 +44,7 @@ object ArticleReader : Reader<Article> {
 
 
     override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> =
-        (ArticleRepository.countOf(query) to queryResultSet(query, limit, offset)
+        (countOf(query) to queryPaginate(query, limit, offset)
             .map { it.toArticle() }
                 ).let { (count, seq) -> QueryResult(count, seq) }
 
@@ -93,8 +93,6 @@ object ArticleWriter : Writer<Article> {
             }
         }
     }.map { keyOf<Article>(it) }
-
-
 }
 
 
