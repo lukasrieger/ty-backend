@@ -3,6 +3,7 @@ package repository.extensions
 import arrow.core.Either
 import arrow.core.Either.Companion.left
 import arrow.core.Either.Companion.right
+import arrow.core.Valid
 import arrow.core.extensions.either.applicative.applicative
 import arrow.core.extensions.list.traverse.sequence
 import arrow.core.fix
@@ -82,7 +83,7 @@ suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
             val (childKey) = child.id
 
 
-            create(child).fold(
+            create(Valid(child)).fold(
                 ifLeft = { it.left() },
                 ifRight = {
                     updateArticle(parentKey) {

@@ -1,6 +1,7 @@
 package repository
 
 import arrow.core.Option
+import arrow.core.Valid
 import org.jetbrains.exposed.sql.Query
 
 
@@ -45,7 +46,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun update(entry: T): Result<PrimaryKey<T>>
+    suspend fun update(entry: Valid<T>): Result<PrimaryKey<T>>
 
     /**
      * Create a new [entry] in the database.
@@ -54,7 +55,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun create(entry: T): Result<T>
+    suspend fun create(entry: Valid<T>): Result<T>
 
     /**
      * Removes an entry from the database that matches the given [id].

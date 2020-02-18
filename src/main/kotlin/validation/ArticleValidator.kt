@@ -8,8 +8,13 @@ import model.*
 import org.joda.time.DateTime
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.koin.dsl.module
 import repository.ArticleReader
 import repository.PrimaryKey
+
+val validationModule = module {
+    single { ArticleValidator }
+}
 
 
 object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), KoinComponent {
@@ -53,11 +58,7 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
                         )
                     }
                 )
-
-
             })
-
-
     }
 
 

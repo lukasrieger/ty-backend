@@ -1,9 +1,7 @@
 package repository
 
-import arrow.core.Either
+import arrow.core.*
 import arrow.core.None
-import arrow.core.Option
-import arrow.core.Some
 import arrow.syntax.function.pipe
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
@@ -72,3 +70,27 @@ internal inline fun <T> ResultRow?.asOption(builder: ResultRow.() -> T): Option<
 
 
 internal operator fun EntityID<Int>.component1() = value
+
+/**
+ * This function behaves exactly like a normal map, except that [f] receives the Valid wrapper instead of the
+ * value contained within.
+ * @receiver Validated<E, A>
+ * @param f Function1<Valid<A>, B>
+ * @return Validated<E, B>
+ */
+fun <E, A, B> Validated<E, A>.mapV(f: (Valid<A>) -> B): Validated<E, B> = bimap(::identity) {
+    f(Valid(it))
+}
+
+/**
+ * This function behaves exactly like a normal fold, except that [fa] receives the Valid wrapper instead of the
+ * value contained within.
+ * @receiver Validated<E,A>
+ * @param fe Function1<E, B>
+ * @param fa Function1<Valid<A>, B>
+ * @return B
+ */
+inline fun <E, A, B> Validated<E, A>.foldV(fe: (E) -> B, fa: (Valid<A>) -> B) = when (this) {
+    is Validated.Valid -> fa(this)
+    is Validated.Invalid -> (fe(e))
+}

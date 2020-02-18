@@ -2,6 +2,7 @@ package repository
 
 import arrow.core.Either
 import arrow.core.Option
+import arrow.core.Valid
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
 import org.jetbrains.exposed.sql.*
@@ -17,7 +18,9 @@ val contactModule = module {
     single { ContactRepository }
 }
 
-internal typealias ContactIndex = PrimaryKey<ContactPartner>
+typealias ContactIndex = PrimaryKey<ContactPartner>
+
+typealias ValidContact = Valid<ContactPartner>
 
 object ContactReader : Reader<ContactPartner> {
     override suspend fun byId(id: PrimaryKey<ContactPartner>): Option<ContactPartner> =
@@ -49,25 +52,27 @@ object ContactReader : Reader<ContactPartner> {
 
 object ContactWriter : Writer<ContactPartner> {
 
-    override suspend fun update(entry: ContactPartner): Result<ContactIndex> = Either.catch {
+    override suspend fun update(entry: ValidContact): Result<ContactIndex> = Either.catch {
+        val (contact) = entry
         newSuspendedTransaction(Dispatchers.IO) {
-            val (key) = entry.id
+            val (key) = contact.id
             ContactTable.run {
-                update({ id eq key }) { entry.toStatement(it) }
+                update({ id eq key }) { contact.toStatement(it) }
             }
         }
     }.map { keyOf<ContactPartner>(it) }
 
 
-    override suspend fun create(entry: ContactPartner): Result<ContactPartner> = Either.catch {
+    override suspend fun create(entry: ValidContact): Result<ContactPartner> = Either.catch {
+        val (contact) = entry
         newSuspendedTransaction(Dispatchers.IO) {
             ContactTable.run {
                 insert {
-                    entry.toStatement(it)
+                    contact.toStatement(it)
                 } get id
             }
         }
-    }.map { (key) -> entry.copy(id = keyOf(key)) }
+    }.map { (key) -> entry.a.copy(id = keyOf(key)) }
 
 
     override suspend fun delete(id: PrimaryKey<ContactPartner>): Result<ContactIndex> = Either.catch {

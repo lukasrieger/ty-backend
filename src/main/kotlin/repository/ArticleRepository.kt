@@ -1,10 +1,8 @@
 package repository
 
-import arrow.core.Either
+import arrow.core.*
 import arrow.core.None
-import arrow.core.Option
 import arrow.core.extensions.fx
-import arrow.core.toOption
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
@@ -24,7 +22,9 @@ val articleModule = module {
     single { ArticleRepository }
 }
 
-internal typealias ArticleIndex = PrimaryKey<Article>
+typealias ArticleIndex = PrimaryKey<Article>
+
+typealias ValidArticle = Valid<Article>
 
 
 object ArticleReader : Reader<Article> {
@@ -53,25 +53,27 @@ object ArticleReader : Reader<Article> {
 
 object ArticleWriter : Writer<Article> {
 
-    override suspend fun update(entry: Article): Result<ArticleIndex> = Either.catch {
+    override suspend fun update(entry: ValidArticle): Result<ArticleIndex> = Either.catch {
+        val (article) = entry
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.run {
-                val (key) = entry.id
-                update({ ArticlesTable.id eq key }) { entry.toStatement(it) }
+                val (key) = article.id
+                update({ ArticlesTable.id eq key }) { article.toStatement(it) }
             }
         }
     }.map { keyOf<Article>(it) }
 
 
-    override suspend fun create(entry: Article): Result<Article> = Either.catch {
+    override suspend fun create(entry: ValidArticle): Result<Article> = Either.catch {
+        val (article) = entry
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.run {
                 insert {
-                    entry.toStatement(it)
+                    article.toStatement(it)
                 } get ArticlesTable.id
             }
         }
-    }.map { entry.copy(id = keyOf(it.value)) }
+    }.map { entry.a.copy(id = keyOf(it.value)) }
 
 
     override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = Either.catch {

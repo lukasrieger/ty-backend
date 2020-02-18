@@ -33,8 +33,6 @@ data class Article(
 
     val isRecurrent
         get() = recurrentInfo.isDefined()
-
-
 }
 
 

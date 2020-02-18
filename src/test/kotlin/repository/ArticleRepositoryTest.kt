@@ -3,6 +3,7 @@ package repository
 
 import arrow.core.Either.Right
 import arrow.core.None
+import arrow.core.Valid
 import io.kotlintest.assertions.arrow.either.shouldBeRight
 import io.kotlintest.assertions.arrow.option.shouldBeNone
 import io.kotlintest.assertions.arrow.option.shouldNotBeNone
@@ -24,6 +25,8 @@ import org.koin.test.KoinTest
 import org.koin.test.inject
 import repository.dao.ArticlesTable
 import repository.dao.ContactTable
+import validation.ArticleValidator
+import validation.validationModule
 import kotlin.coroutines.CoroutineContext
 import kotlin.system.measureTimeMillis
 
@@ -65,9 +68,11 @@ object ArticleGenerator : Gen<Article> {
 
 class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
-    override fun listeners() = listOf(KoinListener(listOf(articleModule, contactModule)))
+    override fun listeners() = listOf(KoinListener(listOf(articleModule, contactModule, validationModule)))
 
     private val repo: ArticleRepository by inject()
+
+    private val validator: ArticleValidator by inject()
 
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + CoroutineName("ArticleRepositoryTest")
@@ -80,15 +85,21 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
             val time = measureTimeMillis {
                 assertAll(ArticleGenerator) { article: Article ->
                     runBlocking {
-                        val keyResult = repo.create(article)
-                        keyResult.shouldBeRight()
+                        val articleOk = validator.validate(article)
 
-                        val (createdArticle) = keyResult as Right<Article>
-                        val art = repo.byId(createdArticle.id)
+                        articleOk
+                            .foldV(
+                                fe = {},
+                                fa = {
+                                    val keyResult = repo.create(it)
+                                    keyResult.shouldBeRight()
 
-                        art.shouldNotBeNone()
+                                    val (createdArticle) = keyResult as Right<Article>
+                                    val art = repo.byId(createdArticle.id)
 
-
+                                    art.shouldNotBeNone()
+                                }
+                            )
                     }
                 }
             }
@@ -115,10 +126,18 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
         "A deleted article should not by queryable anymore" {
             assertAll(ArticleGenerator) { a: Article ->
                 runBlocking {
-                    repo.create(a)
-                    repo.delete(a.id)
-                    val art = repo.byId(a.id)
-                    art.shouldBeNone()
+
+                    val articleOk = validator.validate(a)
+                    articleOk.fold(
+                        fe = {},
+                        fa = {
+                            repo.create(Valid(it))
+                            repo.delete(a.id)
+                            val art = repo.byId(a.id)
+                            art.shouldBeNone()
+                        }
+                    )
+
                 }
             }
         }
