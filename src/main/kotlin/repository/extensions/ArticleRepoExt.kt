@@ -2,9 +2,11 @@ package repository.extensions
 
 import arrow.core.Either
 import arrow.core.Either.Companion.left
+import arrow.core.Either.Companion.right
 import arrow.core.extensions.either.applicative.applicative
 import arrow.core.extensions.list.traverse.sequence
 import arrow.core.fix
+import arrow.core.left
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.recurrentCopy
@@ -57,17 +59,7 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
 
 
 /**
- * This function is rather complex.
- * As a first step, this function queries all articles for which the recurrence date is (as of DateTime.now())
- * in the past.
- * These articles are subsequently mapped to a pair of themselves and their recurrent copy.
- * All that is left now is actually writing the new child articles to the database. The problem is though, that
- * updating and creating are inherently fallible actions.
- * (While that is also theoretically the case for simply reading from the database, I chose to model reading to be
- * safe as a design decision)
- *
- * We achieve complete exception safety by wrapping all actions in the result type.
- * Note that we have to use when in [map] in order to stay within the coroutine context of [Repository]
+ * TODO
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
@@ -89,19 +81,22 @@ suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
             val (parentKey) = parent.id
             val (childKey) = child.id
 
-            when (val recurrentResult = create(child)) {
-                is Either.Left -> recurrentResult
-                is Either.Right -> updateArticle(parentKey) {
-                    this[ArticlesTable.childArticle] = childKey
-                    this[ArticlesTable.isRecurrent] = false
-                }
 
-            }
+            create(child).fold(
+                ifLeft = { it.left() },
+                ifRight = {
+                    updateArticle(parentKey) {
+                        this[ArticlesTable.childArticle] = childKey
+                        this[ArticlesTable.isRecurrent] = false
+                    }
+                }
+            )
+
         }
         .sequence(Either.applicative()).fix() // Turns List<Either<L,R>> into Either<L,List<R>>
         .fold(
-            ifLeft = ::left,
-            ifRight = { Result.right(Unit) }
+            ifLeft = { left(it) },
+            ifRight = { right(Unit) }
         )
 
 private fun Query.paginate(limit: Int?, offset: Int?): Query = apply {

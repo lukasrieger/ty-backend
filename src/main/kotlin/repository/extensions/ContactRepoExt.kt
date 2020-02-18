@@ -11,7 +11,7 @@ import repository.toContactPartner
 
 /**
  * This function retrieves all available ContactPartners from the database.
- * By design there will never be sufficiently large amounts of contact partners to warrant some kind of pagination.
+ * By design there will never be a sufficiently large amount of contact partners to warrant some kind of pagination.
  * @receiver Repository<ContactPartner>
  * @return Sequence<ContactPartner>
  */
