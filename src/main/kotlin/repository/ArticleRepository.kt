@@ -103,12 +103,13 @@ object ArticleRepository :
 
 
 internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> = Option.fx {
-    val (rec) = row[ArticlesTable.recurrentCheckFrom].toOption()
-    val (app) = row[ArticlesTable.nextApplicationDeadline].toOption()
-    val (arch) = row[ArticlesTable.nextArchiveDate].toOption()
+    val rec = !row[ArticlesTable.recurrentCheckFrom].toOption()
+    val app = !row[ArticlesTable.nextApplicationDeadline].toOption()
+    val arch = !row[ArticlesTable.nextArchiveDate].toOption()
 
     RecurrentInfo(rec, app, arch)
 }
+
 
 
 internal suspend inline fun ResultRow.toArticle(): Article =

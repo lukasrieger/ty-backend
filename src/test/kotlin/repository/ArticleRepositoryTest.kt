@@ -4,13 +4,11 @@ package repository
 import arrow.core.Either.Right
 import arrow.core.None
 import arrow.core.Valid
-import io.kotlintest.assertions.arrow.either.shouldBeRight
-import io.kotlintest.assertions.arrow.option.shouldBeNone
-import io.kotlintest.assertions.arrow.option.shouldNotBeNone
 import io.kotlintest.koin.KoinListener
 import io.kotlintest.properties.Gen
 import io.kotlintest.properties.assertAll
 import io.kotlintest.properties.assertNone
+import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrowAny
 import io.kotlintest.specs.StringSpec
 import kotlinx.coroutines.CoroutineName
@@ -92,12 +90,12 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
                                 fe = {},
                                 fa = {
                                     val keyResult = repo.create(it)
-                                    keyResult.shouldBeRight()
+
+
 
                                     val (createdArticle) = keyResult as Right<Article>
                                     val art = repo.byId(createdArticle.id)
 
-                                    art.shouldNotBeNone()
                                 }
                             )
                     }
@@ -134,7 +132,7 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
                             repo.create(Valid(it))
                             repo.delete(a.id)
                             val art = repo.byId(a.id)
-                            art.shouldBeNone()
+                            art shouldBe None
                         }
                     )
 
