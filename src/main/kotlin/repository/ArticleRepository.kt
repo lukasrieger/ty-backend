@@ -61,7 +61,7 @@ object ArticleWriter : Writer<Article> {
                 update({ ArticlesTable.id eq key }) { article.toStatement(it) }
             }
         }
-    }.map { keyOf<Article>(it) }
+    }.map { keyOf(it) }
 
 
     override suspend fun create(entry: ValidArticle): Result<Article> = Either.catch {
@@ -92,7 +92,7 @@ object ArticleWriter : Writer<Article> {
 
             }
         }
-    }.map { keyOf<Article>(it) }
+    }.map { keyOf(it) }
 }
 
 
@@ -127,8 +127,8 @@ internal suspend inline fun ResultRow.toArticle(): Article =
         recurrentInfo = readRecurrence(this),
         applicationDeadline = this[ArticlesTable.applicationDeadline],
         contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
-        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf<Article>(it) },
-        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf<Article>(it) }
+        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf(it) },
+        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf(it) }
     )
 
 

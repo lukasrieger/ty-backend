@@ -72,7 +72,7 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
         validators
             .map { it(value) }
             .sequence(ValidatedNel.applicative(Nel.semigroup<ArticleValidationError>()))
-            .map { value }.fix()
+            .map { value }
 
 
 
