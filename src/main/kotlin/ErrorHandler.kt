@@ -1,7 +1,6 @@
 
-
 object ErrorHandler {
 
-    fun log(err: Throwable): Nothing = TODO()
+    fun handle(err: Any): Nothing = error(err)
 
 }

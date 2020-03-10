@@ -19,13 +19,13 @@ import org.jetbrains.exposed.sql.SortOrder
  * @property result Collection<T>
  * @constructor
  */
-class QueryResult<T>(val count: Int, val result: Collection<T>) {
+class QueryResult<T>(val count: Int,val result: Collection<T>) {
     operator fun component1() = result
 }
 
 
 /**
- * Convenient alias for the Either type. Heavily used by the repository layer.
+ * Convenient alias for the Either type.    
  */
 typealias Result<T> = Either<Throwable, T>
 
@@ -78,7 +78,7 @@ internal operator fun EntityID<Int>.component1() = value
  * @param f Function1<Valid<A>, B>
  * @return Validated<E, B>
  */
-fun <E, A, B> Validated<E, A>.mapV(f: (Valid<A>) -> B): Validated<E, B> = bimap(::identity) {
+inline fun <E, A, B> Validated<E, A>.mapV(crossinline f: (Valid<A>) -> B): Validated<E, B> = bimap(::identity) {
     f(Valid(it))
 }
 
