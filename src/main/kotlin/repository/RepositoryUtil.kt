@@ -94,3 +94,11 @@ inline fun <E, A, B> Validated<E, A>.foldV(fe: (E) -> B, fa: (Valid<A>) -> B) = 
     is Validated.Valid -> fa(this)
     is Validated.Invalid -> (fe(e))
 }
+
+/**
+ * Infix wrapper around the standard map function provided by the stdlib
+ * @receiver Iterable<T>
+ * @param transform Function1<T, R>
+ * @return List<R>
+ */
+inline infix fun <T,R> Iterable<T>.imap(transform: (T) -> R): List<R> = this.map(transform)

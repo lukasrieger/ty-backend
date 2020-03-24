@@ -71,11 +71,8 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
     override suspend fun validate(value: Article): ValidatedNel<ArticleValidationError, Article> =
         validators
             .map { it(value) }
-            .sequence(ValidatedNel.applicative(Nel.semigroup<ArticleValidationError>()))
-            .map { value }.fix()
-
-
-
+            .sequence(ValidatedNel.applicative(Nel.semigroup()))
+            .map { value }
 
 }
 

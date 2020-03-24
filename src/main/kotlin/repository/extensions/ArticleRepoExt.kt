@@ -1,13 +1,18 @@
 package repository.extensions
 
-import arrow.core.Either
+import arrow.core.*
 import arrow.core.Either.Companion.left
 import arrow.core.Either.Companion.right
-import arrow.core.Valid
 import arrow.core.extensions.either.applicative.applicative
+import arrow.core.extensions.either.applicativeError.raiseError
+import arrow.core.extensions.either.monad.flatMap
+import arrow.core.extensions.either.monad.forEffect
+import arrow.core.extensions.either.monadError.ensure
+import arrow.core.extensions.fx
 import arrow.core.extensions.list.traverse.sequence
-import arrow.core.fix
-import arrow.core.left
+import arrow.core.extensions.option.applicative.applicative
+import arrow.fx.IO
+import arrow.fx.extensions.fx
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.recurrentCopy
@@ -60,7 +65,7 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
             }
         }
     }
-}.map { keyOf<Article>(it) }
+}.map (::keyOf)
 
 
 /**
@@ -88,7 +93,7 @@ suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
 
 
             create(Valid(child)).fold(
-                ifLeft = { it.left() },
+                ifLeft = ::left,
                 ifRight = {
                     updateArticle(parentKey) {
                         this[ArticlesTable.childArticle] = childKey
@@ -100,9 +105,10 @@ suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
         }
         .sequence(Either.applicative()).fix() // Turns List<Either<L,R>> into Either<L,List<R>>
         .fold(
-            ifLeft = { left(it) },
+            ifLeft = ::left,
             ifRight = { right(Unit) }
         )
+
 
 private fun Query.paginate(limit: Int?, offset: Int?): Query = apply {
     if (limit != null) {

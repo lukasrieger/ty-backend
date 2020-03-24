@@ -1,6 +1,5 @@
 package repository
 
-
 import arrow.core.Either.Right
 import arrow.core.None
 import arrow.core.Valid
@@ -27,6 +26,7 @@ import validation.ArticleValidator
 import validation.validationModule
 import kotlin.coroutines.CoroutineContext
 import kotlin.system.measureTimeMillis
+
 
 object TestDbSettings {
     fun setup() {
@@ -60,9 +60,7 @@ object ArticleGenerator : Gen<Article> {
             recurrentInfo = None
         )
     }
-
 }
-
 
 class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
@@ -73,8 +71,7 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
     private val validator: ArticleValidator by inject()
 
     override val coroutineContext: CoroutineContext
-        get() = Dispatchers.Default + CoroutineName("ArticleRepositoryTest")
-
+        get() = Dispatchers.Default + CoroutineName("repository.ArticleRepositoryTest")
 
     init {
 
@@ -91,18 +88,14 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
                                 fa = {
                                     val keyResult = repo.create(it)
 
-
-
                                     val (createdArticle) = keyResult as Right<Article>
                                     val art = repo.byId(createdArticle.id)
-
                                 }
                             )
                     }
                 }
             }
             println(time)
-
         }
 
         "Querying a non existent article never throws an exception" {
@@ -135,7 +128,6 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
                             art shouldBe None
                         }
                     )
-
                 }
             }
         }
