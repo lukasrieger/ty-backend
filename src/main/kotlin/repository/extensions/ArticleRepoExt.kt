@@ -3,16 +3,10 @@ package repository.extensions
 import arrow.core.Either
 import arrow.core.Either.Companion.left
 import arrow.core.Either.Companion.right
+import arrow.core.Validated
 import arrow.core.extensions.either.applicative.applicative
-import arrow.core.extensions.either.applicativeError.raiseError
-import arrow.core.extensions.either.monad.flatMap
-import arrow.core.extensions.either.monad.forEffect
-import arrow.core.extensions.either.monadError.ensure
-import arrow.core.extensions.fx
 import arrow.core.extensions.list.traverse.sequence
-import arrow.core.extensions.option.applicative.applicative
-import arrow.fx.IO
-import arrow.fx.extensions.fx
+import arrow.core.fix
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.recurrentCopy
@@ -65,7 +59,7 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
             }
         }
     }
-}.map (::keyOf)
+}.map(::keyOf)
 
 
 /**
@@ -92,7 +86,7 @@ suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
             val (childKey) = child.id
 
 
-            create(Valid(child)).fold(
+            create(Validated.Valid(child)).fold(
                 ifLeft = ::left,
                 ifRight = {
                     updateArticle(parentKey) {
@@ -110,7 +104,7 @@ suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
         )
 
 
-private fun Query.paginate(limit: Int?, offset: Int?): Query = apply {
+internal fun Query.paginate(limit: Int?, offset: Int?): Query = apply {
     if (limit != null) {
         if (offset != null) {
             limit(limit, offset)
@@ -118,6 +112,5 @@ private fun Query.paginate(limit: Int?, offset: Int?): Query = apply {
         limit(limit)
     }
 }
-
 
 

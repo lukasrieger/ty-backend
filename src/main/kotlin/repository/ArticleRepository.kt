@@ -1,8 +1,10 @@
 package repository
 
-import arrow.core.*
 import arrow.core.None
+import arrow.core.Option
+import arrow.core.Valid
 import arrow.core.extensions.fx
+import arrow.core.toOption
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
@@ -27,7 +29,6 @@ typealias ArticleIndex = PrimaryKey<Article>
 typealias ValidArticle = Valid<Article>
 
 
-
 object ArticleReader : Reader<Article> {
 
     override suspend fun byId(id: PrimaryKey<Article>): Option<Article> =
@@ -38,64 +39,35 @@ object ArticleReader : Reader<Article> {
                 .asOption(ResultRow::toArticle)
         }
 
-    override suspend fun countOf(query: Query): Int =
-        newSuspendedTransaction(Dispatchers.IO) {
-            query.count()
-        }
-
+    override suspend fun countOf(query: Query): Int = newSuspendedTransaction(Dispatchers.IO) { query.count() }
 
     override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> {
         val pagedQuery = queryPaginate(query, limit, offset).map { it.toArticle() }
-
         return QueryResult(countOf(query), pagedQuery)
     }
 
 }
 
-
 object ArticleWriter : Writer<Article> {
 
-    override suspend fun update(entry: ValidArticle): Result<ArticleIndex> = Either.catch {
-        val (key) = entry.a.id
+    override suspend fun update(entry: ValidArticle): Result<ArticleIndex> = safeTransactionIO(ArticlesTable) {
         val (article) = entry
-
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.run {
-                update({ ArticlesTable.id eq key }) { article.toStatement(it) }
-            }
-        }
-    }.map (::keyOf)
+        val (key) = article.id
+        update({ ArticlesTable.id eq key }) { article.toStatement(it) }
+    }.map { keyOf<Article>(it) }
 
 
-    override suspend fun create(entry: ValidArticle): Result<Article> = Either.catch {
+    override suspend fun create(entry: ValidArticle): Result<Article> = safeTransactionIO(ArticlesTable) {
         val (article) = entry
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.run {
-                insert {
-                    article.toStatement(it)
-                } get ArticlesTable.id
-            }
-        }
+        insert { article.toStatement(it) } get id
     }.map { entry.a.copy(id = keyOf(it.value)) }
 
 
-    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = Either.catch {
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.run {
-
-                // make sure that no references to the deleted entry are left in the table
-                update({ childArticle eq id.key }) {
-                    it[childArticle] = null
-                }
-                update({ parentArticle eq id.key }) {
-                    it[parentArticle] = null
-                }
-
-                deleteWhere { ArticlesTable.id eq id.key }
-
-            }
-        }
-    }.map (::keyOf)
+    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = safeTransactionIO(ArticlesTable) {
+        update({ childArticle eq id.key }) { it[childArticle] = null }
+        update({ parentArticle eq id.key }) { it[parentArticle] = null }
+        deleteWhere { ArticlesTable.id eq id.key }
+    }.map { keyOf<Article>(it) }
 }
 
 
@@ -114,7 +86,6 @@ internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> = Option.fx {
 }
 
 
-
 internal suspend inline fun ResultRow.toArticle(): Article =
     Article(
         id = keyOf(this[ArticlesTable.id].value),
@@ -130,8 +101,8 @@ internal suspend inline fun ResultRow.toArticle(): Article =
         recurrentInfo = readRecurrence(this),
         applicationDeadline = this[ArticlesTable.applicationDeadline],
         contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
-        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf(it) },
-        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf(it) }
+        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf<Article>(it) },
+        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf<Article>(it) }
     )
 
 

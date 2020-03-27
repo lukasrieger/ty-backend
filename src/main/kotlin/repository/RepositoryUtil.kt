@@ -3,10 +3,13 @@ package repository
 import arrow.core.*
 import arrow.core.None
 import arrow.syntax.function.pipe
+import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 
 
 /**
@@ -19,13 +22,13 @@ import org.jetbrains.exposed.sql.SortOrder
  * @property result Collection<T>
  * @constructor
  */
-class QueryResult<T>(val count: Int,val result: Collection<T>) {
+class QueryResult<T>(val count: Int, val result: Collection<T>) {
     operator fun component1() = result
 }
 
 
 /**
- * Convenient alias for the Either type.    
+ * Convenient alias for the Either type.
  */
 typealias Result<T> = Either<Throwable, T>
 
@@ -101,4 +104,11 @@ inline fun <E, A, B> Validated<E, A>.foldV(fe: (E) -> B, fa: (Valid<A>) -> B) = 
  * @param transform Function1<T, R>
  * @return List<R>
  */
-inline infix fun <T,R> Iterable<T>.imap(transform: (T) -> R): List<R> = this.map(transform)
+inline infix fun <T, R> Iterable<T>.imap(transform: (T) -> R): List<R> = this.map(transform)
+
+
+suspend fun <E : Table, T> safeTransactionIO(table: E, f: E.() -> T): Either<Throwable, T> = Either.catch {
+    newSuspendedTransaction(Dispatchers.IO) {
+        table.run(f)
+    }
+}

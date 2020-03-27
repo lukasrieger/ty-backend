@@ -2,11 +2,8 @@ package validation
 
 import arrow.core.*
 import arrow.core.extensions.list.traverse.sequence
-import arrow.core.extensions.list.traverse.traverse
 import arrow.core.extensions.nonemptylist.semigroup.semigroup
 import arrow.core.extensions.validated.applicative.applicative
-import arrow.core.extensions.validated.applicative.map
-import arrow.core.extensions.validated.applicativeError.raiseError
 import arrow.core.extensions.validated.functor.map
 import model.*
 import org.joda.time.DateTime
@@ -66,12 +63,10 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
     }
 
 
-
-
     override suspend fun validate(value: Article): ValidatedNel<ArticleValidationError, Article> =
         validators
             .map { it(value) }
-            .sequence(ValidatedNel.applicative(Nel.semigroup()))
+            .sequence(ValidatedNel.applicative(Nel.semigroup<ArticleValidationError>()))
             .map { value }
 
 }

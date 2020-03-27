@@ -3,11 +3,12 @@ package model
 import arrow.core.None
 import arrow.core.Option
 import arrow.core.Some
+import arrow.optics.optics
 import org.joda.time.DateTime
 import repository.PrimaryKey
 import repository.None as NullKey
 
-
+@optics
 data class Article(
     val id: PrimaryKey<Article> = NullKey,
     val title: String,
@@ -25,6 +26,8 @@ data class Article(
     val childArticle: Option<PrimaryKey<Article>> = None,
     val parentArticle: Option<PrimaryKey<Article>> = None
 ) {
+    companion object
+
     val hasChild
         get() = childArticle.isDefined()
 
