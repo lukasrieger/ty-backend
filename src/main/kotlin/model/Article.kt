@@ -3,12 +3,13 @@ package model
 import arrow.core.None
 import arrow.core.Option
 import arrow.core.Some
+import arrow.optics.optics
 import org.joda.time.DateTime
 import repository.PrimaryKey
 import repository.None as NullKey
 
 
-data class Article(
+@optics data class Article(
     val id: PrimaryKey<Article> = NullKey,
     val title: String,
     val text: String,

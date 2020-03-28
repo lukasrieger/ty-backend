@@ -54,18 +54,18 @@ object ArticleReader : Reader<Article> {
 object ArticleWriter : Writer<Article> {
 
     override suspend fun update(entry: ValidArticle): Result<ArticleIndex> = Either.catch {
-        val (article) = entry
+        val article = entry.a
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.run {
                 val (key) = article.id
-                update({ ArticlesTable.id eq key }) { article.toStatement(it) }
+                update({ id eq key }) { article.toStatement(it) }
             }
         }
-    }.map { keyOf(it) }
+    }.map { keyOf<Article>(it) }
 
 
     override suspend fun create(entry: ValidArticle): Result<Article> = Either.catch {
-        val (article) = entry
+        val article = entry.a
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.run {
                 insert {
@@ -73,7 +73,7 @@ object ArticleWriter : Writer<Article> {
                 } get ArticlesTable.id
             }
         }
-    }.map { entry.a.copy(id = keyOf(it.value)) }
+    }.map { Article.id.set(entry.a,keyOf(it.value)) }
 
 
     override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = Either.catch {
@@ -92,7 +92,7 @@ object ArticleWriter : Writer<Article> {
 
             }
         }
-    }.map { keyOf(it) }
+    }.map { keyOf<Article>(it) }
 }
 
 
@@ -127,8 +127,8 @@ internal suspend inline fun ResultRow.toArticle(): Article =
         recurrentInfo = readRecurrence(this),
         applicationDeadline = this[ArticlesTable.applicationDeadline],
         contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
-        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf(it) },
-        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf(it) }
+        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf<Article>(it) },
+        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf<Article>(it) }
     )
 
 

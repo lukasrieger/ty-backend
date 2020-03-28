@@ -60,7 +60,7 @@ object ContactWriter : Writer<ContactPartner> {
                 update({ id eq key }) { contact.toStatement(it) }
             }
         }
-    }.map { keyOf(it) }
+    }.map { keyOf<ContactPartner>(it) }
 
 
     override suspend fun create(entry: ValidContact): Result<ContactPartner> = Either.catch {
@@ -83,7 +83,7 @@ object ContactWriter : Writer<ContactPartner> {
                 }
             }
         }
-    }.map { keyOf(it) }
+    }.map { keyOf<ContactPartner>(it) }
 
 
 }

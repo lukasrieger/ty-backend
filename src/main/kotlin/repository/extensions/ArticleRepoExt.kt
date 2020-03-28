@@ -60,7 +60,7 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
             }
         }
     }
-}.map { keyOf(it) }
+}.map { keyOf<Article>(it) }
 
 
 /**

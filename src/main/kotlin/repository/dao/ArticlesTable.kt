@@ -5,9 +5,6 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.jodatime.date
 
 
-/**
- * Table definition with rows that correspond to the properties of the [model.Article] type.
- */
 object ArticlesTable : IntIdTable() {
     val title = text("title")
     val text = text("text")

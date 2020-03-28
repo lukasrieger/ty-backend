@@ -19,9 +19,7 @@ import org.jetbrains.exposed.sql.SortOrder
  * @property result Collection<T>
  * @constructor
  */
-class QueryResult<T>(val count: Int,val result: Collection<T>) {
-    operator fun component1() = result
-}
+data class QueryResult<T>(val count: Int, val result: Collection<T>)
 
 
 /**
@@ -37,9 +35,7 @@ typealias Result<T> = Either<Throwable, T>
  * @property ord Pair<Column<T>, S>
  * @constructor
  */
-class Ordering<T, S : SortOrder>(val ord: Pair<Column<T>, S>) {
-    operator fun component1() = ord
-}
+data class Ordering<T, S : SortOrder>(val ord: Pair<Column<T>, S>)
 
 /**
  * Convenience function to construct a new ordering.
