@@ -42,7 +42,7 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
 
     val validParentArticle = validation { article ->
         article.parentArticle.fold(
-            ifEmpty = { article.valid() }, // we treat the absence of a parent article as valid for now.
+            ifEmpty = { article.valid() },
             ifSome = { key ->
                 articleReader.byId(key).fold(
                     ifEmpty = { ArticleValidationError.MissingArticle(key).invalid() },
@@ -67,11 +67,11 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
 
 
 suspend fun Validator<ArticleValidationError, Article>.validate(
-    id: PrimaryKey<Article> = repository.None,
+    id: PrimaryKey<Article> = repository.Init,
     title: String,
     text: String,
     rubric: Rubric,
-    priority: Int,
+    priority: Priority,
     targetGroup: TargetGroup,
     supportType: SupportType,
     subject: Subject,

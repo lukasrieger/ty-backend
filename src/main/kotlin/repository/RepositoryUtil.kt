@@ -1,7 +1,6 @@
 package repository
 
 import arrow.core.*
-import arrow.core.None
 import arrow.syntax.function.pipe
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.dao.id.EntityID

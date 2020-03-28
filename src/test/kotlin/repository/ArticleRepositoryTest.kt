@@ -45,7 +45,7 @@ object ArticleGenerator : Gen<Article> {
             title = Gen.string().random().first(),
             text = Gen.string().random().first(),
             rubric = Gen.enum<Rubric>().random().first(),
-            priority = Gen.int().random().first(),
+            priority = Gen.enum<Priority>().random().first(),
             targetGroup = Gen.enum<TargetGroup>().random().first(),
             supportType = Gen.enum<SupportType>().random().first(),
             subject = Gen.enum<Subject>().random().first(),

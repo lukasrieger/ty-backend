@@ -9,7 +9,7 @@ object ArticlesTable : IntIdTable() {
     val title = text("title")
     val text = text("text")
     val rubric = enumerationByName("rubric", 50, Rubric::class)
-    val priority = integer("priority")
+    val priority = enumerationByName("priority", 50, Priority::class)
     val targetGroup = enumerationByName("targetGroup", 50, TargetGroup::class)
     val supportType = enumerationByName("supportType", 50, SupportType::class)
     val subject = enumerationByName("subject", 50, Subject::class)

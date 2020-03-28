@@ -1,17 +1,17 @@
 package model
 
 enum class Rubric(
-    val international: Boolean = false,
-    val akronym: String
+    val akronym: String,
+    val international: Boolean = false
 ) {
 
 
-    HORIZONT_2020(true, "Horizont 2020"),
-    OTHER_EU_PROGRAM(true, "EU-Programme: Sonstige"),
-    OTHER_INTERNATIONAL(true, "Weiter Förderinstitutionen (int)"),
+    Horizont2020("Horizont 2020", true),
+    OtherEUProgram("EU-Programme: Sonstige", true),
+    OtherInternational("Weiter Förderinstitutionen (int)", true),
 
-    LMU(akronym = "LMU"),
-    BMBF(akronym = "Bundesministerium für Bildung und Forschung (BMBF)")
+    LMU("LMU"),
+    BMBF("Bundesministerium für Bildung und Forschung (BMBF)")
 
 }
 

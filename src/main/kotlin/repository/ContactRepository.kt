@@ -78,7 +78,7 @@ object ContactRepository :
 internal fun ResultRow.toContactPartner(): ContactPartner = ContactPartner(
     id = keyOf(this[ContactTable.id].value),
     surname = this[ContactTable.firstName],
-    lastname = this[ContactTable.lastName],
+    lastName = this[ContactTable.lastName],
     phoneNumber = this[ContactTable.phoneNumber],
     url = this[ContactTable.url]
 )
@@ -86,7 +86,7 @@ internal fun ResultRow.toContactPartner(): ContactPartner = ContactPartner(
 private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
     statement.run {
         this[ContactTable.firstName] = surname
-        this[ContactTable.lastName] = lastname
+        this[ContactTable.lastName] = lastName
         this[ContactTable.phoneNumber] = phoneNumber
         this[ContactTable.url] = url
     }

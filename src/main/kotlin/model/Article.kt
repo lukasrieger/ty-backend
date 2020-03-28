@@ -6,7 +6,7 @@ import arrow.core.Some
 import arrow.optics.optics
 import org.joda.time.DateTime
 import repository.PrimaryKey
-import repository.None as NullKey
+import repository.Init as NullKey
 
 @optics
 data class Article(
@@ -14,7 +14,7 @@ data class Article(
     val title: String,
     val text: String,
     val rubric: Rubric,
-    val priority: Int,
+    val priority: Priority,
     val targetGroup: TargetGroup,
     val supportType: SupportType,
     val subject: Subject,
