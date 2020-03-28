@@ -3,10 +3,13 @@ package repository
 import arrow.core.*
 import arrow.core.None
 import arrow.syntax.function.pipe
+import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 
 
 /**
@@ -19,11 +22,11 @@ import org.jetbrains.exposed.sql.SortOrder
  * @property result Collection<T>
  * @constructor
  */
-data class QueryResult<T>(val count: Int, val result: Collection<T>)
+data class QueryResult<T>(val count: Long, val result: Collection<T>)
 
 
 /**
- * Convenient alias for the Either type.    
+ * Convenient alias for the Either type.
  */
 typealias Result<T> = Either<Throwable, T>
 

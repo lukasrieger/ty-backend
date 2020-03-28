@@ -4,6 +4,7 @@ import arrow.core.Option
 import arrow.core.Valid
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
+import model.id
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -30,7 +31,8 @@ object ContactReader : Reader<ContactPartner> {
                 .asOption(ResultRow::toContactPartner)
         }
 
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<ContactPartner> =
+
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<ContactPartner> =
         (ContactRepository.countOf(query) to
                 newSuspendedTransaction(Dispatchers.IO) {
                     query
@@ -40,7 +42,7 @@ object ContactReader : Reader<ContactPartner> {
                 ).let { (count, seq) -> QueryResult(count, seq) }
 
 
-    override suspend fun countOf(query: Query): Int = newSuspendedTransaction(Dispatchers.IO) { query.count() }
+    override suspend fun countOf(query: Query): Long = newSuspendedTransaction(Dispatchers.IO) { query.count() }
 
 }
 
@@ -56,7 +58,7 @@ object ContactWriter : Writer<ContactPartner> {
     override suspend fun create(entry: ValidContact): Result<ContactPartner> = safeTransactionIO(ContactTable) {
         val (contact) = entry
         insert { contact.toStatement(it) } get id
-    }.map { (key) -> entry.a.copy(id = keyOf(key)) }
+    }.map { (key) -> ContactPartner.id.set(entry.a, keyOf(key)) }
 
 
     override suspend fun delete(id: PrimaryKey<ContactPartner>): Result<ContactIndex> =

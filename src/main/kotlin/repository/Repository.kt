@@ -25,14 +25,14 @@ interface Reader<T> {
      * @param query Query
      * @return QueryResult<T>
      */
-    suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<T>
+    suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<T>
 
     /**
      * Returns the amount of entries in the database that match the given [query]
      * @param query Query
      * @return Int
      */
-    suspend fun countOf(query: Query): Int
+    suspend fun countOf(query: Query): Long
 
 }
 

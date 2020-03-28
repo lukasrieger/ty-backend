@@ -8,6 +8,7 @@ import arrow.core.toOption
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
+import model.id
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -39,9 +40,9 @@ object ArticleReader : Reader<Article> {
                 .asOption(ResultRow::toArticle)
         }
 
-    override suspend fun countOf(query: Query): Int = newSuspendedTransaction(Dispatchers.IO) { query.count() }
+    override suspend fun countOf(query: Query): Long = newSuspendedTransaction(Dispatchers.IO) { query.count() }
 
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> {
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<Article> {
         val pagedQuery = queryPaginate(query, limit, offset).map { it.toArticle() }
         return QueryResult(countOf(query), pagedQuery)
     }
@@ -60,7 +61,7 @@ object ArticleWriter : Writer<Article> {
     override suspend fun create(entry: ValidArticle): Result<Article> = safeTransactionIO(ArticlesTable) {
         val (article) = entry
         insert { article.toStatement(it) } get id
-    }.map { entry.a.copy(id = keyOf(it.value)) }
+    }.map { Article.id.set(entry.a, keyOf(it.value)) }
 
 
     override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = safeTransactionIO(ArticlesTable) {

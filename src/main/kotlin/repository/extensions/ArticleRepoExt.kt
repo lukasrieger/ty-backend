@@ -21,7 +21,7 @@ import repository.dao.ArticlesTable
 internal suspend fun queryPaginate(
     query: Query,
     limit: Int? = null,
-    offset: Int? = null,
+    offset: Long? = null,
     ordering: () -> Pair<Column<DateTime>, SortOrder> = { ArticlesTable.applicationDeadline to SortOrder.ASC }
 ) = newSuspendedTransaction(Dispatchers.IO) {
     query.paginate(limit, offset)
@@ -38,7 +38,7 @@ internal suspend fun queryPaginate(
  * @param query Query
  * @return QueryResult<Article>
  */
-suspend fun Reader<Article>.byQueryArchived(limit: Int?, offset: Int?, query: Query): QueryResult<Article> {
+suspend fun Reader<Article>.byQueryArchived(limit: Int?, offset: Long?, query: Query): QueryResult<Article> {
     val count = countOf(query)
 
     val queryResult = queryPaginate(query, limit, offset) {
@@ -63,7 +63,6 @@ private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit
 
 
 /**
- * TODO
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
@@ -104,7 +103,7 @@ suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
         )
 
 
-internal fun Query.paginate(limit: Int?, offset: Int?): Query = apply {
+internal fun Query.paginate(limit: Int?, offset: Long?): Query = apply {
     if (limit != null) {
         if (offset != null) {
             limit(limit, offset)

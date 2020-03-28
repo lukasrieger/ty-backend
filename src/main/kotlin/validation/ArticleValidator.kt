@@ -1,10 +1,9 @@
 package validation
 
-import arrow.core.*
-import arrow.core.extensions.list.traverse.sequence
-import arrow.core.extensions.nonemptylist.semigroup.semigroup
-import arrow.core.extensions.validated.applicative.applicative
-import arrow.core.extensions.validated.functor.map
+import arrow.core.None
+import arrow.core.Option
+import arrow.core.invalid
+import arrow.core.valid
 import model.*
 import org.joda.time.DateTime
 import org.koin.core.KoinComponent
@@ -40,6 +39,7 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
         }
     }
 
+
     val validParentArticle = validation { article ->
         article.parentArticle.fold(
             ifEmpty = { article.valid() }, // we treat the absence of a parent article as valid for now.
@@ -62,12 +62,6 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
             })
     }
 
-
-    override suspend fun validate(value: Article): ValidatedNel<ArticleValidationError, Article> =
-        validators
-            .map { it(value) }
-            .sequence(ValidatedNel.applicative(Nel.semigroup<ArticleValidationError>()))
-            .map { value }
 
 }
 
