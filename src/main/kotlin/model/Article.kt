@@ -8,8 +8,8 @@ import org.joda.time.DateTime
 import repository.PrimaryKey
 import repository.None as NullKey
 
-
-@optics data class Article(
+@optics
+data class Article(
     val id: PrimaryKey<Article> = NullKey,
     val title: String,
     val text: String,
@@ -26,6 +26,8 @@ import repository.None as NullKey
     val childArticle: Option<PrimaryKey<Article>> = None,
     val parentArticle: Option<PrimaryKey<Article>> = None
 ) {
+    companion object
+
     val hasChild
         get() = childArticle.isDefined()
 

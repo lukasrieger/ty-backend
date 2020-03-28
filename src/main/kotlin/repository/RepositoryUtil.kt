@@ -90,3 +90,9 @@ inline fun <E, A, B> Validated<E, A>.foldV(fe: (E) -> B, fa: (Valid<A>) -> B) = 
     is Validated.Valid -> fa(this)
     is Validated.Invalid -> (fe(e))
 }
+
+suspend fun <E : Table, T> safeTransactionIO(table: E, f: E.() -> T): Either<Throwable, T> = Either.catch {
+    newSuspendedTransaction(Dispatchers.IO) {
+        table.run(f)
+    }
+}

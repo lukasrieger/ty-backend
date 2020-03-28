@@ -1,8 +1,10 @@
 package repository
 
-import arrow.core.*
 import arrow.core.None
+import arrow.core.Option
+import arrow.core.Valid
 import arrow.core.extensions.fx
+import arrow.core.toOption
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
@@ -37,61 +39,34 @@ object ArticleReader : Reader<Article> {
                 .asOption(ResultRow::toArticle)
         }
 
-    override suspend fun countOf(query: Query): Int =
-        newSuspendedTransaction(Dispatchers.IO) {
-            query.count()
-        }
+    override suspend fun countOf(query: Query): Int = newSuspendedTransaction(Dispatchers.IO) { query.count() }
 
-
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> =
-        (countOf(query) to queryPaginate(query, limit, offset)
-            .map { it.toArticle() }
-                ).let { (count, seq) -> QueryResult(count, seq) }
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Int?): QueryResult<Article> {
+        val pagedQuery = queryPaginate(query, limit, offset).map { it.toArticle() }
+        return QueryResult(countOf(query), pagedQuery)
+    }
 
 }
 
-
 object ArticleWriter : Writer<Article> {
 
-    override suspend fun update(entry: ValidArticle): Result<ArticleIndex> = Either.catch {
-        val article = entry.a
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.run {
-                val (key) = article.id
-                update({ id eq key }) { article.toStatement(it) }
-            }
-        }
+    override suspend fun update(entry: ValidArticle): Result<ArticleIndex> = safeTransactionIO(ArticlesTable) {
+        val (article) = entry
+        val (key) = article.id
+        update({ ArticlesTable.id eq key }) { article.toStatement(it) }
     }.map { keyOf<Article>(it) }
 
 
-    override suspend fun create(entry: ValidArticle): Result<Article> = Either.catch {
-        val article = entry.a
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.run {
-                insert {
-                    article.toStatement(it)
-                } get ArticlesTable.id
-            }
-        }
-    }.map { Article.id.set(entry.a,keyOf(it.value)) }
+    override suspend fun create(entry: ValidArticle): Result<Article> = safeTransactionIO(ArticlesTable) {
+        val (article) = entry
+        insert { article.toStatement(it) } get id
+    }.map { entry.a.copy(id = keyOf(it.value)) }
 
 
-    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = Either.catch {
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.run {
-
-                // make sure that no references to the deleted entry are left in the table
-                update({ childArticle eq id.key }) {
-                    it[childArticle] = null
-                }
-                update({ parentArticle eq id.key }) {
-                    it[parentArticle] = null
-                }
-
-                deleteWhere { ArticlesTable.id eq id.key }
-
-            }
-        }
+    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = safeTransactionIO(ArticlesTable) {
+        update({ childArticle eq id.key }) { it[childArticle] = null }
+        update({ parentArticle eq id.key }) { it[parentArticle] = null }
+        deleteWhere { ArticlesTable.id eq id.key }
     }.map { keyOf<Article>(it) }
 }
 
@@ -109,7 +84,6 @@ internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> = Option.fx {
 
     RecurrentInfo(rec, app, arch)
 }
-
 
 
 internal suspend inline fun ResultRow.toArticle(): Article =
@@ -147,12 +121,10 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.contactPartner] = contactPartner.map { it.id.key }.orNull()
         this[ArticlesTable.childArticle] = childArticle.map { it.key }.orNull()
         this[ArticlesTable.parentArticle] = parentArticle.map { it.key }.orNull()
-
         this[ArticlesTable.isRecurrent] = recurrentInfo.isDefined()
         this[ArticlesTable.recurrentCheckFrom] = recurrentInfo.map { it.recurrentCheckFrom }.orNull()
         this[ArticlesTable.nextApplicationDeadline] = recurrentInfo.map { it.applicationDeadline }.orNull()
         this[ArticlesTable.nextArchiveDate] = recurrentInfo.map { it.archiveDate }.orNull()
-
     }
 
 
