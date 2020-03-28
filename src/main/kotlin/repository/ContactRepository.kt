@@ -49,9 +49,7 @@ object ContactWriter : Writer<ContactPartner> {
     override suspend fun update(entry: ValidContact): Result<ContactIndex> = safeTransactionIO(ContactTable) {
         val (contact) = entry
         val (key) = contact.id
-        ContactTable.run {
-            update({ id eq key }) { contact.toStatement(it) }
-        }
+        update({ id eq key }) { contact.toStatement(it) }
     }.map(::keyOf)
 
 

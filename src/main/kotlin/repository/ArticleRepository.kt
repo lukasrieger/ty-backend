@@ -121,12 +121,10 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.contactPartner] = contactPartner.map { it.id.key }.orNull()
         this[ArticlesTable.childArticle] = childArticle.map { it.key }.orNull()
         this[ArticlesTable.parentArticle] = parentArticle.map { it.key }.orNull()
-
         this[ArticlesTable.isRecurrent] = recurrentInfo.isDefined()
         this[ArticlesTable.recurrentCheckFrom] = recurrentInfo.map { it.recurrentCheckFrom }.orNull()
         this[ArticlesTable.nextApplicationDeadline] = recurrentInfo.map { it.applicationDeadline }.orNull()
         this[ArticlesTable.nextArchiveDate] = recurrentInfo.map { it.archiveDate }.orNull()
-
     }
 
 
