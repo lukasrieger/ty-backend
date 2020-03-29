@@ -1,7 +1,7 @@
 package model
 
 enum class Rubric(
-    val akronym: String,
+    val acronym: String,
     val international: Boolean = false
 ) {
 

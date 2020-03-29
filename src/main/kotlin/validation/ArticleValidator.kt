@@ -41,25 +41,35 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
 
 
     val validParentArticle = validation { article ->
+
+        fun checkValidRelation(parent: Article, key: PrimaryKey<Article>) =
+            if (key == article.id) {
+                article.valid()
+            } else {
+                ArticleValidationError.InvalidRelation(parent, article).invalid()
+            }
+
+        fun checkSymmetry(parent: Article) =
+            article.childArticle.fold(
+                ifEmpty = { ArticleValidationError.AsymmetricRelation(parent, article).invalid() },
+                ifSome = { checkValidRelation(parent, it) }
+            )
+
+
+        suspend fun checkParentPresent(key: PrimaryKey<Article>) =
+            articleReader.byId(key).fold(
+                ifEmpty = { ArticleValidationError.MissingArticle(key).invalid() },
+                ifSome = ::checkSymmetry
+            )
+
+
+
         article.parentArticle.fold(
             ifEmpty = { article.valid() },
-            ifSome = { key ->
-                articleReader.byId(key).fold(
-                    ifEmpty = { ArticleValidationError.MissingArticle(key).invalid() },
-                    ifSome = { parent ->
-                        parent.childArticle.fold(
-                            ifEmpty = { ArticleValidationError.AsymmetricRelation(parent, article).invalid() },
-                            ifSome = {
-                                if (it == article.id) {
-                                    article.valid()
-                                } else {
-                                    ArticleValidationError.InvalidRelation(parent, article).invalid()
-                                }
-                            }
-                        )
-                    }
-                )
-            })
+            ifSome = { checkParentPresent(it) }
+        )
+
+
     }
 
 

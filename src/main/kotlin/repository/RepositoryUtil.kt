@@ -76,9 +76,8 @@ internal operator fun EntityID<Int>.component1() = value
  * @param f Function1<Valid<A>, B>
  * @return Validated<E, B>
  */
-inline fun <E, A, B> Validated<E, A>.mapV(crossinline f: (Valid<A>) -> B): Validated<E, B> = bimap(::identity) {
-    f(Valid(it))
-}
+inline fun <E, A, B> Validated<E, A>.mapV(crossinline f: (Valid<A>) -> B): Validated<E, B> =
+    bimap(::identity) { f(Valid(it)) }
 
 /**
  * This function behaves exactly like a normal fold, except that [fa] receives the Valid wrapper instead of the
