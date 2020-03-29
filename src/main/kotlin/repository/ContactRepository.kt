@@ -32,14 +32,13 @@ object ContactReader : Reader<ContactPartner> {
         }
 
 
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<ContactPartner> =
-        (ContactRepository.countOf(query) to
-                newSuspendedTransaction(Dispatchers.IO) {
-                    query
-                        .paginate(limit, offset)
-                        .map { it.toContactPartner() }
-                }
-                ).let { (count, seq) -> QueryResult(count, seq) }
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<ContactPartner> {
+        val pagedQuery = query
+            .paginate(limit, offset)
+            .map { it.toContactPartner() }
+
+        return QueryResult(countOf(query), pagedQuery)
+    }
 
 
     override suspend fun countOf(query: Query): Long = newSuspendedTransaction(Dispatchers.IO) { query.count() }
