@@ -1,6 +1,7 @@
 package repository
 
 import arrow.core.None
+import arrow.core.ValidatedNel
 import io.kotlintest.koin.KoinListener
 import io.kotlintest.properties.assertAll
 import io.kotlintest.properties.assertNone
@@ -14,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import model.Article
 import org.koin.test.KoinTest
 import org.koin.test.inject
+import validation.ArticleValidationError
 import validation.ArticleValidator
 import validation.validationModule
 import kotlin.coroutines.CoroutineContext
@@ -38,7 +40,7 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
             val time = measureTimeMillis {
                 assertAll(ArticleGenerator) { article: Article ->
                     runBlocking {
-                        val articleOk = validator.validate(article)
+                        val articleOk: ValidatedNel<ArticleValidationError, Article> = validator.validate(article)
 
                         articleOk
                             .foldV(

@@ -55,14 +55,11 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
                 ifSome = { checkValidRelation(parent, it) }
             )
 
-
         suspend fun checkParentPresent(key: PrimaryKey<Article>) =
             articleReader.byId(key).fold(
                 ifEmpty = { ArticleValidationError.MissingArticle(key).invalid() },
                 ifSome = ::checkSymmetry
             )
-
-
 
         article.parentArticle.fold(
             ifEmpty = { article.valid() },

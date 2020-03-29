@@ -7,8 +7,8 @@ import model.TargetGroup
 import org.jetbrains.exposed.sql.*
 import repository.dao.ArticlesTable
 
-class Constraint(val isUnion: Boolean, val operator: Op<Boolean>) {
-    operator fun component1() = operator
+data class Constraint(val isUnion: Boolean, val operator: Op<Boolean>) {
+
 }
 
 fun constraint(isUnion: Boolean, cons: SqlExpressionBuilder.() -> Op<Boolean>): Constraint =
@@ -32,7 +32,7 @@ fun ArticleState.toConstraint(isUnion: Boolean = false) = constraint(isUnion) {
 }
 
 fun build(ops: Iterable<Constraint>) = ops.fold(ArticlesTable.selectAll()) { query, cons ->
-    val (op) = cons
+    val (_, op) = cons
     if (cons.isUnion) {
         query.orWhere { op }
     } else {

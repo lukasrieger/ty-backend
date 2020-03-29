@@ -64,8 +64,6 @@ object ContactWriter : Writer<ContactPartner> {
         safeTransactionIO(ContactTable) {
             deleteWhere { ContactTable.id eq id.key }
         }.map(::keyOf)
-
-
 }
 
 object ContactRepository :
