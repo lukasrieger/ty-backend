@@ -35,7 +35,14 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
         if (isBeforeArchiveDate) {
             it.valid()
         } else {
-            ArticleValidationError.InvalidApplicationDate.invalid()
+            ArticleValidationError.InvalidApplicationDate(it.applicationDeadline).invalid()
+        }
+    }
+
+    val validPriority = validation {
+        when (val priority = it.priority) {
+            Priority.VeryHigh -> it.valid()
+            else -> ArticleValidationError.InvalidPriority(priority).invalid()
         }
     }
 

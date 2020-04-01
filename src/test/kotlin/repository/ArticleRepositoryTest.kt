@@ -60,6 +60,19 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
             println(time)
         }
 
+        "Article validation returns usable information" {
+            assertAll(ArticleGenerator) { article: Article ->
+                runBlocking {
+                    val articleOk = validator.validate(article)
+                    articleOk.leftMap {
+                        it.all.forEach(::println)
+                        it
+                    }
+                }
+
+            }
+        }
+
         "Querying a non existent article never throws an exception" {
             assertNone(ArticleGenerator) { article: Article ->
                 runBlocking {
