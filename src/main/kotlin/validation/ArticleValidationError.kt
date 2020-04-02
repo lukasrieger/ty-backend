@@ -1,12 +1,16 @@
 package validation
 
 import model.Article
+import model.Priority
+import org.joda.time.DateTime
 import repository.PrimaryKey
 import kotlin.reflect.KProperty1
 
 sealed class ArticleValidationError {
 
-    object InvalidApplicationDate : ArticleValidationError()
+    data class InvalidApplicationDate(val date: DateTime) : ArticleValidationError()
+
+    data class InvalidPriority(val priority: Priority) : ArticleValidationError()
 
     data class BlankField<T>(val field: KProperty1<Article, T>) : ArticleValidationError()
 

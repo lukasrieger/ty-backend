@@ -38,9 +38,12 @@ internal suspend fun queryPaginate(
  * @param query Query
  * @return QueryResult<Article>
  */
-suspend fun Reader<Article>.byQueryArchived(limit: Int?, offset: Long?, query: Query): QueryResult<Article> {
+suspend fun Reader<Article>.byQueryArchived(
+    query: Query,
+    limit: Int?,
+    offset: Long?
+): QueryResult<Article> {
     val count = countOf(query)
-
     val queryResult = queryPaginate(query, limit, offset) {
         ArticlesTable.archiveDate to SortOrder.DESC
     }
@@ -51,15 +54,12 @@ suspend fun Reader<Article>.byQueryArchived(limit: Int?, offset: Long?, query: Q
 }
 
 
-private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Result<ArticleIndex> = Either.catch {
-    newSuspendedTransaction(Dispatchers.IO) {
-        ArticlesTable.run {
-            update({ ArticlesTable.id eq id }) {
-                it.run(statement)
-            }
+private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Result<ArticleIndex> =
+    safeTransactionIO(ArticlesTable) {
+        update({ ArticlesTable.id eq id }) {
+            it.run(statement)
         }
-    }
-}.map(::keyOf)
+    }.map(::keyOf)
 
 
 /**

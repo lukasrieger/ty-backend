@@ -12,13 +12,14 @@ object DbSettings {
 //            it.useNestedTransactions = true
 //        }
         Database.connect(
-            url = "jdbc:mysql://localhost:3306/typhoon",
+            url = "jdbc:mysql://localhost:3306/typhoon?serverTimezone=UTC",
             driver = "com.mysql.cj.jdbc.Driver",
             user = "typhoon",
             password = "typhoon"
 
         ).also {
-            it.useNestedTransactions = true
+
+        it.useNestedTransactions = true
             transaction {
                 //
                 SchemaUtils.create(ContactTable)
