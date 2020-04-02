@@ -21,7 +21,6 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
 
     private val articleReader: ArticleReader by inject()
 
-
     val validTitle = validation {
         if (it.title.isNotBlank()) {
             it.valid()
@@ -31,8 +30,7 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
     }
 
     val validApplicationDate = validation {
-        val isBeforeArchiveDate = it.applicationDeadline.isBefore(it.archiveDate)
-        if (isBeforeArchiveDate) {
+        if (it.applicationDeadline.isBefore(it.archiveDate)) {
             it.valid()
         } else {
             ArticleValidationError.InvalidApplicationDate.invalid()
@@ -65,10 +63,7 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
             ifEmpty = { article.valid() },
             ifSome = { checkParentPresent(it) }
         )
-
-
     }
-
 
 }
 

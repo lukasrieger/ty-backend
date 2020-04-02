@@ -26,9 +26,7 @@ val articleModule = module {
 }
 
 typealias ArticleIndex = PrimaryKey<Article>
-
 typealias ValidArticle = Valid<Article>
-
 
 object ArticleReader : Reader<Article> {
 

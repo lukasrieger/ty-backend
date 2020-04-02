@@ -44,9 +44,7 @@ abstract class AbstractValidator<E, T> : Validator<E, T> {
 
     protected fun validation(f: suspend (T) -> Validated<E, T>): suspend (T) -> ValidatedNel<E, T> {
         val validatingFunc: suspend (T) -> ValidatedNel<E, T> = { f(it).toValidatedNel() }
-
         validators += (validatingFunc)
-
         return validatingFunc
     }
 }
