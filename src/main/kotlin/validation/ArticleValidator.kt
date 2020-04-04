@@ -37,14 +37,6 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
         }
     }
 
-    val validPriority = validation {
-        when (val priority = it.priority) {
-            Priority.VeryHigh -> it.valid()
-            else -> ArticleValidationError.InvalidPriority(priority).invalid()
-        }
-    }
-
-
     val validParentArticle = validation { article ->
 
         fun checkValidRelation(parent: Article, key: PrimaryKey<Article>) =
