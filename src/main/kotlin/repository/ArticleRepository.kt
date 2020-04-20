@@ -127,5 +127,8 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
     }
 
 
-private suspend fun <T> fromNullable(id: Int?, res: suspend (PrimaryKey<T>) -> Option<T>): Option<T> =
+private suspend fun <T> fromNullable(
+    id: Int?,
+    res: suspend (PrimaryKey<T>) -> Option<T>
+): Option<T> =
     if (id != null) res(keyOf(id)) else None
