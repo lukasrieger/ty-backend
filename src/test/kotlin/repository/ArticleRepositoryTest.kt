@@ -32,7 +32,6 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
         get() = Dispatchers.Default + CoroutineName("repository.ArticleRepositoryTest")
 
     init {
-
         TestDbSettings.setup()
         "Articles can that were created can immediately be read " {
             val time = measureTimeMillis {
