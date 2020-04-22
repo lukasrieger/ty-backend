@@ -25,9 +25,7 @@ import kotlin.system.measureTimeMillis
 class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
     override fun listeners() = listOf(KoinListener(listOf(articleModule, contactModule, validationModule)))
-
     private val repo: ArticleRepository by inject()
-
     private val validator: ArticleValidator by inject()
 
     override val coroutineContext: CoroutineContext
