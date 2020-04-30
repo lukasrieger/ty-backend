@@ -6,7 +6,6 @@ name: Gradle Package
 on:
   release:
     branches: [ master ]
-    types: [created]
 
 jobs:
   build:
