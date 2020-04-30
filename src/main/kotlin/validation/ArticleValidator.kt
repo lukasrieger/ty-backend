@@ -38,7 +38,6 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
     }
 
     val validParentArticle = validation { article ->
-
         fun checkValidRelation(parent: Article, key: PrimaryKey<Article>) =
             if (key == article.id) {
                 article.valid()
