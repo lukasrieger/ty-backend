@@ -1,5 +1,6 @@
 package repository
 
+import arrow.core.Either
 import arrow.core.Option
 import arrow.core.Valid
 import org.jetbrains.exposed.sql.Query
@@ -46,7 +47,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun update(entry: Valid<T>): Result<PrimaryKey<T>>
+    suspend fun update(entry: Valid<T>): Either<Throwable, PrimaryKey<T>>
 
     /**
      * Create a new [entry] in the database.
@@ -55,7 +56,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun create(entry: Valid<T>): Result<T>
+    suspend fun create(entry: Valid<T>): Either<Throwable, T>
 
     /**
      * Removes an entry from the database that matches the given [id].
@@ -63,7 +64,7 @@ interface Writer<T> {
      * @param id PrimaryKey<T>
      * @return PrimaryKey<T>
      */
-    suspend fun delete(id: PrimaryKey<T>): Result<PrimaryKey<T>>
+    suspend fun delete(id: PrimaryKey<T>): Either<Throwable, PrimaryKey<T>>
 
 }
 

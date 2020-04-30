@@ -1,10 +1,7 @@
 package repository
 
-import arrow.core.None
-import arrow.core.Option
-import arrow.core.Valid
+import arrow.core.*
 import arrow.core.extensions.fx
-import arrow.core.toOption
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
@@ -49,20 +46,20 @@ object ArticleReader : Reader<Article> {
 
 object ArticleWriter : Writer<Article> {
 
-    override suspend fun update(entry: ValidArticle): Result<ArticleIndex> = safeTransactionIO(ArticlesTable) {
+    override suspend fun update(entry: ValidArticle): Either<Throwable, ArticleIndex> = safeTransactionIO(ArticlesTable) {
         val (article) = entry
         val (key) = article.id
         update({ ArticlesTable.id eq key }) { article.toStatement(it) }
     }.map { keyOf<Article>(it) }
 
 
-    override suspend fun create(entry: ValidArticle): Result<Article> = safeTransactionIO(ArticlesTable) {
+    override suspend fun create(entry: ValidArticle): Either<Throwable, Article> = safeTransactionIO(ArticlesTable) {
         val (article) = entry
         insert { article.toStatement(it) } get id
     }.map { Article.id.set(entry.a, keyOf(it.value)) }
 
 
-    override suspend fun delete(id: PrimaryKey<Article>): Result<ArticleIndex> = safeTransactionIO(ArticlesTable) {
+    override suspend fun delete(id: PrimaryKey<Article>): Either<Throwable, ArticleIndex> = safeTransactionIO(ArticlesTable) {
         update({ childArticle eq id.key }) { it[childArticle] = null }
         update({ parentArticle eq id.key }) { it[parentArticle] = null }
         deleteWhere { ArticlesTable.id eq id.key }

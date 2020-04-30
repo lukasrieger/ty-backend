@@ -54,29 +54,29 @@ suspend fun Reader<Article>.byQueryArchived(
 }
 
 
-private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Result<ArticleIndex> =
-    safeTransactionIO(ArticlesTable) {
-        update({ ArticlesTable.id eq id }) {
-            it.run(statement)
-        }
-    }.map(::keyOf)
+private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Either<Throwable, ArticleIndex> =
+        safeTransactionIO(ArticlesTable) {
+            update({ ArticlesTable.id eq id }) {
+                it.run(statement)
+            }
+        }.map(::keyOf)
 
 
 /**
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
-suspend fun Writer<Article>.createRecurrentArticles(): Result<Unit> =
-    newSuspendedTransaction(Dispatchers.IO) {
-        ArticlesTable.select {
+suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> =
+        newSuspendedTransaction(Dispatchers.IO) {
+            ArticlesTable.select {
 
-            (ArticlesTable.isRecurrent eq true) and
-                    (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
-                    ArticlesTable.childArticle.isNull()
+                (ArticlesTable.isRecurrent eq true) and
+                        (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
+                        ArticlesTable.childArticle.isNull()
 
-        }
-            .map {
-                val article = it.toArticle()
+            }
+                    .map {
+                        val article = it.toArticle()
                 article to article.recurrentCopy()
             }
     }

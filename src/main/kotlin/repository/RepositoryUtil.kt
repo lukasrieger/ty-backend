@@ -25,11 +25,6 @@ data class QueryResult<T>(val count: Long, val result: Collection<T>)
 
 
 /**
- * Convenient alias for the Either type.
- */
-typealias Result<T> = Either<Throwable, T>
-
-/**
  * This class describes an arbitrary ordering over some column of a table.
  * Can be either ascending or descending.
  * @param T
