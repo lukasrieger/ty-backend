@@ -1,9 +1,9 @@
 package repository
 
-import arrow.core.Either
-import arrow.core.Option
 import arrow.core.Valid
+import arrow.fx.IO
 import org.jetbrains.exposed.sql.Query
+
 
 
 interface Reader<T> {
@@ -15,7 +15,7 @@ interface Reader<T> {
      * @param id PrimaryKey<T>
      * @return Option<T>
      */
-    suspend fun byId(id: PrimaryKey<T>): Option<T>
+    fun byId(id: PrimaryKey<T>): IO<Throwable, T?>
 
     /**
      * Retrieve an arbitrary amount of entries from the database that match the given [query].
@@ -26,14 +26,14 @@ interface Reader<T> {
      * @param query Query
      * @return QueryResult<T>
      */
-    suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<T>
+    fun byQuery(query: Query, limit: Int?, offset: Long?): IO<Throwable, QueryResult<T>>
 
     /**
      * Returns the amount of entries in the database that match the given [query]
      * @param query Query
      * @return Int
      */
-    suspend fun countOf(query: Query): Long
+    fun countOf(query: Query): IO<Throwable, Long>
 
 }
 
@@ -47,7 +47,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun update(entry: Valid<T>): Either<Throwable, PrimaryKey<T>>
+    fun update(entry: Valid<T>): IO<Throwable, PrimaryKey<T>>
 
     /**
      * Create a new [entry] in the database.
@@ -56,7 +56,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun create(entry: Valid<T>): Either<Throwable, T>
+    fun create(entry: Valid<T>): IO<Throwable, T>
 
     /**
      * Removes an entry from the database that matches the given [id].
@@ -64,7 +64,7 @@ interface Writer<T> {
      * @param id PrimaryKey<T>
      * @return PrimaryKey<T>
      */
-    suspend fun delete(id: PrimaryKey<T>): Either<Throwable, PrimaryKey<T>>
+    fun delete(id: PrimaryKey<T>): IO<Throwable, PrimaryKey<T>>
 
 }
 

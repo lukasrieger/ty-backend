@@ -2,6 +2,7 @@ package repository
 
 import arrow.core.*
 import arrow.core.extensions.fx
+import arrow.fx.IO
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
@@ -10,7 +11,6 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.koin.dsl.module
-import repository.ContactRepository.byId
 import repository.dao.ArticlesTable
 import repository.extensions.queryPaginate
 
@@ -25,32 +25,39 @@ val articleModule = module {
 typealias ArticleIndex = PrimaryKey<Article>
 typealias ValidArticle = Valid<Article>
 
+
+object ImpureEffects {
+    suspend fun byId(id: PrimaryKey<Article>) = newSuspendedTransaction(Dispatchers.IO) {
+        ArticlesTable.select { ArticlesTable.id eq id.key }
+            .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
+            .singleOrNull()
+            ?.toArticle()
+    }
+}
+
 object ArticleReader : Reader<Article> {
 
-    override suspend fun byId(id: PrimaryKey<Article>): Option<Article> =
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.select { ArticlesTable.id eq id.key }
-                .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
-                .singleOrNull()
-                .asOption(ResultRow::toArticle)
-        }
 
-    override suspend fun countOf(query: Query): Long = newSuspendedTransaction(Dispatchers.IO) { query.count() }
+    override fun byId(id: PrimaryKey<Article>): IO<Throwable, Article?> = IO { ImpureEffects.byId(id) }
 
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<Article> {
+    override fun countOf(query: Query): IO<Throwable, Long> =
+        IO { newSuspendedTransaction(Dispatchers.IO) { query.count() } }
+
+    override fun byQuery(query: Query, limit: Int?, offset: Long?): IO<Throwable, QueryResult<Article>> = IO {
         val pagedQuery = queryPaginate(query, limit, offset).map { it.toArticle() }
-        return QueryResult(countOf(query), pagedQuery)
+        QueryResult(countOf(query), pagedQuery)
     }
 
 }
 
 object ArticleWriter : Writer<Article> {
 
-    override suspend fun update(entry: ValidArticle): Either<Throwable, ArticleIndex> = safeTransactionIO(ArticlesTable) {
-        val (article) = entry
-        val (key) = article.id
-        update({ ArticlesTable.id eq key }) { article.toStatement(it) }
-    }.map { keyOf<Article>(it) }
+    override suspend fun update(entry: ValidArticle): Either<Throwable, ArticleIndex> =
+        safeTransactionIO(ArticlesTable) {
+            val (article) = entry
+            val (key) = article.id
+            update({ ArticlesTable.id eq key }) { article.toStatement(it) }
+        }.map { keyOf<Article>(it) }
 
 
     override suspend fun create(entry: ValidArticle): Either<Throwable, Article> = safeTransactionIO(ArticlesTable) {
@@ -59,11 +66,12 @@ object ArticleWriter : Writer<Article> {
     }.map { Article.id.set(entry.a, keyOf(it.value)) }
 
 
-    override suspend fun delete(id: PrimaryKey<Article>): Either<Throwable, ArticleIndex> = safeTransactionIO(ArticlesTable) {
-        update({ childArticle eq id.key }) { it[childArticle] = null }
-        update({ parentArticle eq id.key }) { it[parentArticle] = null }
-        deleteWhere { ArticlesTable.id eq id.key }
-    }.map { keyOf<Article>(it) }
+    override suspend fun delete(id: PrimaryKey<Article>): Either<Throwable, ArticleIndex> =
+        safeTransactionIO(ArticlesTable) {
+            update({ childArticle eq id.key }) { it[childArticle] = null }
+            update({ parentArticle eq id.key }) { it[parentArticle] = null }
+            deleteWhere { ArticlesTable.id eq id.key }
+        }.map { keyOf<Article>(it) }
 }
 
 
@@ -96,7 +104,7 @@ internal suspend inline fun ResultRow.toArticle(): Article =
         archiveDate = this[ArticlesTable.archiveDate],
         recurrentInfo = readRecurrence(this),
         applicationDeadline = this[ArticlesTable.applicationDeadline],
-        contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
+        contactPartner = this[ArticlesTable.contactPartner].let { ImpureEffects.byId(keyOf(it)) },
         childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf<Article>(it) },
         parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf<Article>(it) }
     )
@@ -126,6 +134,6 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
 
 private suspend fun <T> fromNullable(
     id: Int?,
-    res: suspend (PrimaryKey<T>) -> Option<T>
+    res: suspend (PrimaryKey<T>) -> T?
 ): Option<T> =
     if (id != null) res(keyOf(id)) else None
