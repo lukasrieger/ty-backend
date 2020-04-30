@@ -9,11 +9,11 @@ import arrow.core.extensions.validated.applicative.applicative
 import arrow.core.extensions.validated.functor.map
 
 
-typealias ValidatorFunction<E, T> = suspend (T) -> ValidatedNel<E, T>
+typealias ValidateF<E, T> = suspend (T) -> ValidatedNel<E, T>
 
 interface Validator<E, T> {
 
-    val validators: MutableList<ValidatorFunction<E, T>>
+    val validators: MutableList<ValidateF<E, T>>
 
     /**
      * This function performs shallow validation of some value T.
@@ -40,7 +40,7 @@ interface Validator<E, T> {
  */
 abstract class AbstractValidator<E, T> : Validator<E, T> {
 
-    override val validators: MutableList<ValidatorFunction<E, T>> = mutableListOf()
+    override val validators: MutableList<ValidateF<E, T>> = mutableListOf()
 
     protected fun validation(f: suspend (T) -> Validated<E, T>): suspend (T) -> ValidatedNel<E, T> {
         val validatingFunc: suspend (T) -> ValidatedNel<E, T> = { f(it).toValidatedNel() }
