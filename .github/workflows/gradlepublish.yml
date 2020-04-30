@@ -4,9 +4,9 @@
 name: Gradle Package
 
 on:
-  release:
-    branches: [ master ]
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
