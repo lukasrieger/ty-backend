@@ -103,10 +103,6 @@ dokka {
     outputDirectory = 'documentation'
 }
 
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
 
 task sourceJar(type: Jar) {
     classifier = 'sources'
