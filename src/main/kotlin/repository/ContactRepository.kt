@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.Valid
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
+import model.extensions.resultRowCoerce
 import model.id
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
@@ -24,21 +25,22 @@ typealias ValidContact = Valid<ContactPartner>
 
 
 object ContactReader : Reader<ContactPartner> {
-    override suspend fun byId(id: PrimaryKey<ContactPartner>): ContactPartner? =
+    override suspend fun byId(id: PrimaryKey<ContactPartner>): ContactPartner? = with(ContactPartner.resultRowCoerce) {
         newSuspendedTransaction(Dispatchers.IO) {
             ContactTable.select { ContactTable.id eq id.key }
                 .singleOrNull()
-                ?.toContactPartner()
+                ?.coerce()
         }
-
-
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<ContactPartner> {
-        val pagedQuery = query
-            .paginate(limit, offset)
-            .map { it.toContactPartner() }
-
-        return QueryResult(countOf(query), pagedQuery)
     }
+
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<ContactPartner> =
+        with(ContactPartner.resultRowCoerce) {
+            val pagedQuery = query
+                .paginate(limit, offset)
+                .map { it.coerce() }
+
+            return QueryResult(countOf(query), pagedQuery)
+        }
 
 
     override suspend fun countOf(query: Query): Long = newSuspendedTransaction(Dispatchers.IO) { query.count() }
@@ -48,7 +50,7 @@ object ContactReader : Reader<ContactPartner> {
 object ContactWriter : Writer<ContactPartner> {
 
     override suspend fun update(entry: ValidContact): Either<Throwable, ValidContact> =
-        safeTransactionIO(ContactTable) {
+        transactionContext(ContactTable) {
             val (contact) = entry
             val (key) = contact.id
             update({ id eq key }) { contact.toStatement(it) }
@@ -56,14 +58,14 @@ object ContactWriter : Writer<ContactPartner> {
 
 
     override suspend fun create(entry: ValidContact): Either<Throwable, ValidContact> =
-        safeTransactionIO(ContactTable) {
+        transactionContext(ContactTable) {
             val (contact) = entry
             insert { contact.toStatement(it) } get id
         }.map { (key) -> Valid(ContactPartner.id.set(entry.a, keyOf(key))) }
 
 
     override suspend fun delete(id: PrimaryKey<ContactPartner>): Either<Throwable, ContactIndex> =
-        safeTransactionIO(ContactTable) {
+        transactionContext(ContactTable) {
             deleteWhere { ContactTable.id eq id.key }
         }.map(::keyOf)
 }
@@ -73,14 +75,6 @@ object ContactRepository :
     Writer<ContactPartner> by ContactWriter,
     Repository<ContactPartner>
 
-
-internal fun ResultRow.toContactPartner(): ContactPartner = ContactPartner(
-    id = keyOf(this[ContactTable.id].value),
-    surname = this[ContactTable.firstName],
-    lastName = this[ContactTable.lastName],
-    phoneNumber = this[ContactTable.phoneNumber],
-    url = this[ContactTable.url]
-)
 
 private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
     statement.run {

@@ -15,4 +15,3 @@ data class ContactPartner(
 ) {
     companion object
 }
-

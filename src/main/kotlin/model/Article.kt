@@ -21,7 +21,8 @@ data class Article(
     val applicationDeadline: DateTime,
     val contactPartner: ContactPartner? = null,
     val childArticle: PrimaryKey<Article>? = null,
-    val parentArticle: PrimaryKey<Article>? = null
+    val parentArticle: PrimaryKey<Article>? = null,
+    val attachedSource: Source? = null
 ) {
     companion object
 
