@@ -31,7 +31,7 @@ fun ArticleState.toConstraint(isUnion: Boolean = false) = constraint(isUnion) {
     ArticlesTable.state eq this@toConstraint
 }
 
-fun build(ops: Iterable<Constraint>) = ops.fold(ArticlesTable.selectAll()) { query, cons ->
+fun Iterable<Constraint>.build() = fold(ArticlesTable.selectAll()) { query, cons ->
     val (_, op) = cons
     if (cons.isUnion) {
         query.orWhere { op }
