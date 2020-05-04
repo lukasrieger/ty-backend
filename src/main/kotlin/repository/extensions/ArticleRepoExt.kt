@@ -9,6 +9,7 @@ import arrow.core.extensions.list.traverse.sequence
 import arrow.core.fix
 import kotlinx.coroutines.Dispatchers
 import model.Article
+import model.extensions.resultRowCoerce
 import model.recurrentCopy
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateStatement
@@ -42,41 +43,44 @@ suspend fun Reader<Article>.byQueryArchived(
     query: Query,
     limit: Int?,
     offset: Long?
-): QueryResult<Article> {
+): QueryResult<Article> = with(Article.resultRowCoerce) {
     val count = countOf(query)
     val queryResult = queryPaginate(query, limit, offset) {
         ArticlesTable.archiveDate to SortOrder.DESC
     }
         .andWhere { ArticlesTable.archiveDate less DateTime.now() }
-        .map { it.toArticle() }
+        .map { it.coerce() }
 
     return QueryResult(count, queryResult)
 }
 
 
-private suspend fun updateArticle(id: Int, statement: UpdateStatement.() -> Unit): Either<Throwable, ArticleIndex> =
-        safeTransactionIO(ArticlesTable) {
-            update({ ArticlesTable.id eq id }) {
-                it.run(statement)
-            }
-        }.map(::keyOf)
+private suspend fun <T> Writer<T>.updateArticle(
+    id: Int,
+    statement: UpdateStatement.() -> Unit
+): Either<Throwable, ArticleIndex> =
+    transactionContext(ArticlesTable) {
+        update({ ArticlesTable.id eq id }) {
+            it.run(statement)
+        }
+    }.map(::keyOf)
 
 
 /**
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
-suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> =
-        newSuspendedTransaction(Dispatchers.IO) {
-            ArticlesTable.select {
+suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> = with(Article.resultRowCoerce) {
+    newSuspendedTransaction(Dispatchers.IO) {
+        ArticlesTable.select {
 
-                (ArticlesTable.isRecurrent eq true) and
-                        (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
-                        ArticlesTable.childArticle.isNull()
+            (ArticlesTable.isRecurrent eq true) and
+                    (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
+                    ArticlesTable.childArticle.isNull()
 
-            }
-                    .map {
-                        val article = it.toArticle()
+        }
+            .map {
+                val article = it.coerce()
                 article to article.recurrentCopy()
             }
     }
@@ -101,6 +105,8 @@ suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> =
             ifLeft = ::left,
             ifRight = { right(Unit) }
         )
+
+}
 
 
 internal fun Query.paginate(limit: Int?, offset: Long?): Query = apply {

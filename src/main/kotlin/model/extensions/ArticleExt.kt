@@ -1,7 +1,7 @@
 package model.extensions
 
-import Coerce
 import model.Article
+import model.Coerce
 import org.jetbrains.exposed.sql.ResultRow
 import repository.ContactRepository
 import repository.dao.ArticlesTable

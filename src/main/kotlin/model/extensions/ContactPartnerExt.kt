@@ -1,6 +1,6 @@
 package model.extensions
 
-import Coerce
+import model.Coerce
 import model.ContactPartner
 import org.jetbrains.exposed.sql.ResultRow
 import repository.dao.ContactTable
