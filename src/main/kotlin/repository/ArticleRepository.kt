@@ -1,7 +1,7 @@
 package repository
 
-import arrow.core.*
-import arrow.core.extensions.fx
+import arrow.core.Either
+import arrow.core.Valid
 import kotlinx.coroutines.Dispatchers
 import model.Article
 import model.RecurrentInfo
@@ -27,12 +27,12 @@ typealias ValidArticle = Valid<Article>
 
 object ArticleReader : Reader<Article> {
 
-    override suspend fun byId(id: PrimaryKey<Article>): Option<Article> =
+    override suspend fun byId(id: PrimaryKey<Article>): Article? =
         newSuspendedTransaction(Dispatchers.IO) {
             ArticlesTable.select { ArticlesTable.id eq id.key }
                 .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
                 .singleOrNull()
-                .asOption(ResultRow::toArticle)
+                ?.toArticle()
         }
 
     override suspend fun countOf(query: Query): Long = newSuspendedTransaction(Dispatchers.IO) { query.count() }
@@ -46,24 +46,27 @@ object ArticleReader : Reader<Article> {
 
 object ArticleWriter : Writer<Article> {
 
-    override suspend fun update(entry: ValidArticle): Either<Throwable, ArticleIndex> = safeTransactionIO(ArticlesTable) {
-        val (article) = entry
-        val (key) = article.id
-        update({ ArticlesTable.id eq key }) { article.toStatement(it) }
-    }.map { keyOf<Article>(it) }
+    override suspend fun update(entry: ValidArticle): Either<Throwable, ValidArticle> =
+        safeTransactionIO(ArticlesTable) {
+            val (article) = entry
+            val (key) = article.id
+            update({ ArticlesTable.id eq key }) { article.toStatement(it) }
+        }.map { entry }
 
 
-    override suspend fun create(entry: ValidArticle): Either<Throwable, Article> = safeTransactionIO(ArticlesTable) {
-        val (article) = entry
-        insert { article.toStatement(it) } get id
-    }.map { Article.id.set(entry.a, keyOf(it.value)) }
+    override suspend fun create(entry: ValidArticle): Either<Throwable, ValidArticle> =
+        safeTransactionIO(ArticlesTable) {
+            val (article) = entry
+            insert { article.toStatement(it) } get id
+        }.map { Valid(Article.id.set(entry.a, keyOf(it.value))) }
 
 
-    override suspend fun delete(id: PrimaryKey<Article>): Either<Throwable, ArticleIndex> = safeTransactionIO(ArticlesTable) {
-        update({ childArticle eq id.key }) { it[childArticle] = null }
-        update({ parentArticle eq id.key }) { it[parentArticle] = null }
-        deleteWhere { ArticlesTable.id eq id.key }
-    }.map { keyOf<Article>(it) }
+    override suspend fun delete(id: PrimaryKey<Article>): Either<Throwable, ArticleIndex> =
+        safeTransactionIO(ArticlesTable) {
+            update({ childArticle eq id.key }) { it[childArticle] = null }
+            update({ parentArticle eq id.key }) { it[parentArticle] = null }
+            deleteWhere { ArticlesTable.id eq id.key }
+        }.map { keyOf<Article>(it) }
 }
 
 
@@ -73,13 +76,14 @@ object ArticleRepository :
     Repository<Article>
 
 
-internal fun readRecurrence(row: ResultRow): Option<RecurrentInfo> = Option.fx {
-    val rec = !row[ArticlesTable.recurrentCheckFrom].toOption()
-    val app = !row[ArticlesTable.nextApplicationDeadline].toOption()
-    val arch = !row[ArticlesTable.nextArchiveDate].toOption()
-
-    RecurrentInfo(rec, app, arch)
-}
+internal fun readRecurrence(row: ResultRow): RecurrentInfo? =
+    row[ArticlesTable.recurrentCheckFrom]?.let { rec ->
+        row[ArticlesTable.nextApplicationDeadline]?.let { app ->
+            row[ArticlesTable.nextArchiveDate]?.let { arch ->
+                RecurrentInfo(rec, app, arch)
+            }
+        }
+    }
 
 
 internal suspend inline fun ResultRow.toArticle(): Article =
@@ -96,9 +100,9 @@ internal suspend inline fun ResultRow.toArticle(): Article =
         archiveDate = this[ArticlesTable.archiveDate],
         recurrentInfo = readRecurrence(this),
         applicationDeadline = this[ArticlesTable.applicationDeadline],
-        contactPartner = fromNullable(this[ArticlesTable.contactPartner]) { byId(it) },
-        childArticle = this[ArticlesTable.childArticle].toOption().map { keyOf<Article>(it) },
-        parentArticle = this[ArticlesTable.parentArticle].toOption().map { keyOf<Article>(it) }
+        contactPartner = this[ArticlesTable.contactPartner]?.let { byId(keyOf(it)) },
+        childArticle = this[ArticlesTable.childArticle]?.let { keyOf<Article>(it) },
+        parentArticle = this[ArticlesTable.parentArticle]?.let { keyOf<Article>(it) }
     )
 
 
@@ -114,18 +118,11 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.state] = state
         this[ArticlesTable.archiveDate] = archiveDate
         this[ArticlesTable.applicationDeadline] = applicationDeadline
-        this[ArticlesTable.contactPartner] = contactPartner.map { it.id.key }.orNull()
-        this[ArticlesTable.childArticle] = childArticle.map { it.key }.orNull()
-        this[ArticlesTable.parentArticle] = parentArticle.map { it.key }.orNull()
-        this[ArticlesTable.isRecurrent] = recurrentInfo.isDefined()
-        this[ArticlesTable.recurrentCheckFrom] = recurrentInfo.map { it.recurrentCheckFrom }.orNull()
-        this[ArticlesTable.nextApplicationDeadline] = recurrentInfo.map { it.applicationDeadline }.orNull()
-        this[ArticlesTable.nextArchiveDate] = recurrentInfo.map { it.archiveDate }.orNull()
+        this[ArticlesTable.contactPartner] = contactPartner?.id?.key
+        this[ArticlesTable.childArticle] = childArticle?.key
+        this[ArticlesTable.parentArticle] = parentArticle?.key
+        this[ArticlesTable.isRecurrent] = recurrentInfo != null
+        this[ArticlesTable.recurrentCheckFrom] = recurrentInfo?.recurrentCheckFrom
+        this[ArticlesTable.nextApplicationDeadline] = recurrentInfo?.applicationDeadline
+        this[ArticlesTable.nextArchiveDate] = recurrentInfo?.archiveDate
     }
-
-
-private suspend fun <T> fromNullable(
-    id: Int?,
-    res: suspend (PrimaryKey<T>) -> Option<T>
-): Option<T> =
-    if (id != null) res(keyOf(id)) else None

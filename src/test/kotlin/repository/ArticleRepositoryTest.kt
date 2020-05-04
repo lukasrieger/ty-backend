@@ -33,7 +33,7 @@ class ArticleRepositoryTest : StringSpec(), KoinTest, CoroutineScope {
 
     init {
         TestDbSettings.setup()
-        "Articles can that were created can immediately be read " {
+        "Articles that were created can immediately be read " {
             val time = measureTimeMillis {
                 assertAll(ArticleGenerator) { article: Article ->
                     runBlocking {

@@ -1,8 +1,5 @@
 package model
 
-import arrow.core.None
-import arrow.core.Option
-import arrow.core.Some
 import arrow.optics.optics
 import org.joda.time.DateTime
 import repository.PrimaryKey
@@ -20,22 +17,22 @@ data class Article(
     val subject: Subject,
     val state: ArticleState,
     val archiveDate: DateTime,
-    val recurrentInfo: Option<RecurrentInfo>,
+    val recurrentInfo: RecurrentInfo? = null,
     val applicationDeadline: DateTime,
-    val contactPartner: Option<ContactPartner> = None,
-    val childArticle: Option<PrimaryKey<Article>> = None,
-    val parentArticle: Option<PrimaryKey<Article>> = None
+    val contactPartner: ContactPartner? = null,
+    val childArticle: PrimaryKey<Article>? = null,
+    val parentArticle: PrimaryKey<Article>? = null
 ) {
     companion object
 
     val hasChild
-        get() = childArticle.isDefined()
+        get() = childArticle != null
 
     val hasParent
-        get() = !parentArticle.isDefined()
+        get() = parentArticle != null
 
     val isRecurrent
-        get() = recurrentInfo.isDefined()
+        get() = recurrentInfo != null
 }
 
 
@@ -47,8 +44,8 @@ data class Article(
  */
 fun Article.recurrentCopy() = copy(
     id = NullKey,
-    parentArticle = Some(id),
-    childArticle = None
+    parentArticle = id,
+    childArticle = null
 )
 
 

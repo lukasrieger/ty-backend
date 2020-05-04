@@ -1,7 +1,6 @@
 package repository
 
 import arrow.core.Either
-import arrow.core.Option
 import arrow.core.Valid
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
@@ -25,11 +24,11 @@ typealias ValidContact = Valid<ContactPartner>
 
 
 object ContactReader : Reader<ContactPartner> {
-    override suspend fun byId(id: PrimaryKey<ContactPartner>): Option<ContactPartner> =
+    override suspend fun byId(id: PrimaryKey<ContactPartner>): ContactPartner? =
         newSuspendedTransaction(Dispatchers.IO) {
             ContactTable.select { ContactTable.id eq id.key }
                 .singleOrNull()
-                .asOption(ResultRow::toContactPartner)
+                ?.toContactPartner()
         }
 
 
@@ -48,23 +47,25 @@ object ContactReader : Reader<ContactPartner> {
 
 object ContactWriter : Writer<ContactPartner> {
 
-    override suspend fun update(entry: ValidContact): Either<Throwable, ContactIndex> = safeTransactionIO(ContactTable) {
-        val (contact) = entry
-        val (key) = contact.id
-        update({ id eq key }) { contact.toStatement(it) }
-    }.map(::keyOf)
+    override suspend fun update(entry: ValidContact): Either<Throwable, ValidContact> =
+        safeTransactionIO(ContactTable) {
+            val (contact) = entry
+            val (key) = contact.id
+            update({ id eq key }) { contact.toStatement(it) }
+        }.map { entry }
 
 
-    override suspend fun create(entry: ValidContact): Either<Throwable, ContactPartner> = safeTransactionIO(ContactTable) {
-        val (contact) = entry
-        insert { contact.toStatement(it) } get id
-    }.map { (key) -> ContactPartner.id.set(entry.a, keyOf(key)) }
+    override suspend fun create(entry: ValidContact): Either<Throwable, ValidContact> =
+        safeTransactionIO(ContactTable) {
+            val (contact) = entry
+            insert { contact.toStatement(it) } get id
+        }.map { (key) -> Valid(ContactPartner.id.set(entry.a, keyOf(key))) }
 
 
     override suspend fun delete(id: PrimaryKey<ContactPartner>): Either<Throwable, ContactIndex> =
-            safeTransactionIO(ContactTable) {
-                deleteWhere { ContactTable.id eq id.key }
-            }.map(::keyOf)
+        safeTransactionIO(ContactTable) {
+            deleteWhere { ContactTable.id eq id.key }
+        }.map(::keyOf)
 }
 
 object ContactRepository :

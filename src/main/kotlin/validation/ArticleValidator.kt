@@ -1,7 +1,5 @@
 package validation
 
-import arrow.core.None
-import arrow.core.Option
 import arrow.core.invalid
 import arrow.core.valid
 import model.*
@@ -47,21 +45,18 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
             }
 
         fun checkSymmetry(parent: Article) =
-            article.childArticle.fold(
-                ifEmpty = { ArticleValidationError.AsymmetricRelation(parent, article).invalid() },
-                ifSome = { checkValidRelation(parent, it) }
-            )
+            article.childArticle?.let { checkValidRelation(parent, it) } ?: ArticleValidationError.AsymmetricRelation(
+                parent,
+                article
+            ).invalid()
+
 
         suspend fun checkParentPresent(key: PrimaryKey<Article>) =
-            articleReader.byId(key).fold(
-                ifEmpty = { ArticleValidationError.MissingArticle(key).invalid() },
-                ifSome = ::checkSymmetry
-            )
+            articleReader.byId(key)?.let(::checkSymmetry) ?: ArticleValidationError.MissingArticle(key).invalid()
 
-        article.parentArticle.fold(
-            ifEmpty = { article.valid() },
-            ifSome = { checkParentPresent(it) }
-        )
+
+        article.parentArticle?.let { checkParentPresent(it) } ?: article.valid()
+
     }
 
 }
@@ -78,11 +73,11 @@ suspend fun Validator<ArticleValidationError, Article>.validate(
     subject: Subject,
     state: ArticleState,
     archiveDate: DateTime,
-    recurrentInfo: Option<RecurrentInfo>,
+    recurrentInfo: RecurrentInfo?,
     applicationDeadline: DateTime,
-    contactPartner: Option<ContactPartner> = None,
-    childArticle: Option<PrimaryKey<Article>> = None,
-    parentArticle: Option<PrimaryKey<Article>> = None
+    contactPartner: ContactPartner? = null,
+    childArticle: PrimaryKey<Article>? = null,
+    parentArticle: PrimaryKey<Article>? = null
 ) = validate(
     Article(
         id,
