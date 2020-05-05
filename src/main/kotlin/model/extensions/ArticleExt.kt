@@ -1,5 +1,6 @@
 package model.extensions
 
+import arrow.core.identity
 import model.Article
 import model.Coerce
 import org.jetbrains.exposed.sql.ResultRow
@@ -23,7 +24,12 @@ private object ArticleFromResultRow : Coerce<ResultRow, Article> {
             archiveDate = this[ArticlesTable.archiveDate],
             recurrentInfo = readRecurrence(this),
             applicationDeadline = this[ArticlesTable.applicationDeadline],
-            contactPartner = this[ArticlesTable.contactPartner]?.let { ContactRepository.byId(keyOf(it)) },
+            contactPartner = this[ArticlesTable.contactPartner]?.let {
+                ContactRepository.byId(keyOf(it)).fold(
+                    ifLeft = { null },
+                    ifRight = ::identity
+                )
+            },
             childArticle = this[ArticlesTable.childArticle]?.let { keyOf<Article>(it) },
             parentArticle = this[ArticlesTable.parentArticle]?.let { keyOf<Article>(it) }
         )
