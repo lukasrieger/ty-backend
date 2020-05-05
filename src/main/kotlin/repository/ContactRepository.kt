@@ -2,9 +2,10 @@ package repository
 
 import arrow.core.Either
 import arrow.core.Valid
+import arrow.core.extensions.either.monad.flatten
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
-import model.extensions.resultRowCoerce
+import model.extensions.fromResultRow
 import model.id
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
@@ -25,25 +26,36 @@ typealias ValidContact = Valid<ContactPartner>
 
 
 object ContactReader : Reader<ContactPartner> {
-    override suspend fun byId(id: PrimaryKey<ContactPartner>): ContactPartner? = with(ContactPartner.resultRowCoerce) {
-        newSuspendedTransaction(Dispatchers.IO) {
-            ContactTable.select { ContactTable.id eq id.key }
-                .singleOrNull()
-                ?.coerce()
-        }
-    }
-
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<ContactPartner> =
-        with(ContactPartner.resultRowCoerce) {
-            val pagedQuery = query
-                .paginate(limit, offset)
-                .map { it.coerce() }
-
-            return QueryResult(countOf(query), pagedQuery)
+    override suspend fun byId(id: PrimaryKey<ContactPartner>): Either<Throwable, ContactPartner?> =
+        Either.catch {
+            with(ContactPartner.fromResultRow) {
+                newSuspendedTransaction(Dispatchers.IO) {
+                    ContactTable.select { ContactTable.id eq id.key }
+                        .singleOrNull()
+                        ?.coerce()
+                }
+            }
         }
 
 
-    override suspend fun countOf(query: Query): Long = newSuspendedTransaction(Dispatchers.IO) { query.count() }
+    override suspend fun byQuery(
+        query: Query,
+        limit: Int?,
+        offset: Long?
+    ): Either<Throwable, QueryResult<ContactPartner>> =
+        Either.catch {
+            with(ContactPartner.fromResultRow) {
+                val queryResult = query.paginate(limit, offset).map { it.coerce() }
+                countOf(query).map { count ->
+                    QueryResult(count, queryResult)
+                }
+
+            }
+        }.flatten()
+
+
+    override suspend fun countOf(query: Query): Either<Throwable, Long> =
+        Either.catch { newSuspendedTransaction(Dispatchers.IO) { query.count() } }
 
 }
 

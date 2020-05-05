@@ -1,15 +1,13 @@
 package repository.extensions
 
-import arrow.core.Either
+import arrow.core.*
 import arrow.core.Either.Companion.left
 import arrow.core.Either.Companion.right
-import arrow.core.Validated
 import arrow.core.extensions.either.applicative.applicative
 import arrow.core.extensions.list.traverse.sequence
-import arrow.core.fix
 import kotlinx.coroutines.Dispatchers
 import model.Article
-import model.extensions.resultRowCoerce
+import model.extensions.fromResultRow
 import model.recurrentCopy
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateStatement
@@ -19,15 +17,14 @@ import repository.*
 import repository.dao.ArticlesTable
 
 
-internal suspend fun queryPaginate(
+internal fun queryPaginate(
     query: Query,
     limit: Int? = null,
     offset: Long? = null,
     ordering: () -> Pair<Column<DateTime>, SortOrder> = { ArticlesTable.applicationDeadline to SortOrder.ASC }
-) = newSuspendedTransaction(Dispatchers.IO) {
-    query.paginate(limit, offset)
-        .orderBy(ordering())
-}
+): Query = query.paginate(limit, offset)
+    .orderBy(ordering())
+
 
 /**
  * This function behaves exactly like [Repository.byQuery], only that only archived articles will be returned by this
@@ -43,15 +40,19 @@ suspend fun Reader<Article>.byQueryArchived(
     query: Query,
     limit: Int?,
     offset: Long?
-): QueryResult<Article> = with(Article.resultRowCoerce) {
-    val count = countOf(query)
-    val queryResult = queryPaginate(query, limit, offset) {
-        ArticlesTable.archiveDate to SortOrder.DESC
-    }
-        .andWhere { ArticlesTable.archiveDate less DateTime.now() }
-        .map { it.coerce() }
+): Either<Throwable, QueryResult<Article>> = with(Article.fromResultRow) {
+    countOf(query).fold(
+        ifLeft = ::Left,
+        ifRight = { count ->
+            val queryResult = queryPaginate(query, limit, offset) {
+                ArticlesTable.archiveDate to SortOrder.DESC
+            }
+                .andWhere { ArticlesTable.archiveDate less DateTime.now() }
+                .map { it.coerce() }
 
-    return QueryResult(count, queryResult)
+            Right(QueryResult(count, queryResult))
+        }
+    )
 }
 
 
@@ -70,7 +71,7 @@ private suspend fun <T> Writer<T>.updateArticle(
  * @receiver Repository<Article>
  * @return Result<Unit>
  */
-suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> = with(Article.resultRowCoerce) {
+suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> = with(Article.fromResultRow) {
     newSuspendedTransaction(Dispatchers.IO) {
         ArticlesTable.select {
 

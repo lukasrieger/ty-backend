@@ -2,12 +2,13 @@ package repository
 
 import arrow.core.Either
 import arrow.core.Valid
+import arrow.core.extensions.either.monad.flatten
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import model.Article
 import model.RecurrentInfo
 import model.Source
-import model.extensions.resultRowCoerce
+import model.extensions.fromResultRow
 import model.id
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
@@ -32,26 +33,35 @@ object ArticleReader : Reader<Article> {
 
     private val context = Dispatchers.IO
 
-    override suspend fun byId(id: PrimaryKey<Article>): Article? = with(Article.resultRowCoerce) {
-        newSuspendedTransaction(context) {
-            ArticlesTable.select { ArticlesTable.id eq id.key }
-                .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
-                .singleOrNull()
-                ?.coerce()
+    override suspend fun byId(id: PrimaryKey<Article>): Either<Throwable, Article?> = Either.catch {
+        with(Article.fromResultRow) {
+            newSuspendedTransaction(context) {
+                ArticlesTable.select { ArticlesTable.id eq id.key }
+                    .orderBy(ArticlesTable.applicationDeadline to SortOrder.ASC)
+                    .singleOrNull()
+                    ?.coerce()
+            }
         }
     }
 
-    override suspend fun countOf(query: Query): Long = newSuspendedTransaction(context) { query.count() }
 
-    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<Article> =
-        with(Article.resultRowCoerce) {
-            val count = countOf(query)
-            val pagedQuery = queryPaginate(query, limit, offset).map { it.coerce() }
-            return QueryResult(count, pagedQuery)
-        }
+    override suspend fun countOf(query: Query): Either<Throwable, Long> =
+        Either.catch { newSuspendedTransaction(context) { query.count() } }
 
 
+    override suspend fun byQuery(query: Query, limit: Int?, offset: Long?): Either<Throwable, QueryResult<Article>> =
+        Either.catch {
+            with(Article.fromResultRow) {
+                val queryResult = queryPaginate(query, limit, offset).map { it.coerce() }
+                countOf(query).map { count ->
+                    QueryResult(count, queryResult)
+                }
+
+            }
+        }.flatten()
 }
+
+
 
 object ArticleWriter : Writer<Article> {
 
@@ -121,7 +131,7 @@ internal suspend fun loadSource(url: String): Either<Throwable, Source> = Either
     withContext(Dispatchers.IO) {
         FileInputStream(sourcePath(url)).use {
             val bytes = it.readBytes()
-            val text = bytes.contentToString()
+            val text = String(bytes)
 
             Source(url, text)
         }

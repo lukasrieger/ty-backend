@@ -14,7 +14,7 @@ interface Reader<T> {
      * @param id PrimaryKey<T>
      * @return Option<T>
      */
-    suspend fun byId(id: PrimaryKey<T>): T?
+    suspend fun byId(id: PrimaryKey<T>): Either<Throwable, T?>
 
     /**
      * Retrieve an arbitrary amount of entries from the database that match the given [query].
@@ -25,14 +25,14 @@ interface Reader<T> {
      * @param query Query
      * @return QueryResult<T>
      */
-    suspend fun byQuery(query: Query, limit: Int?, offset: Long?): QueryResult<T>
+    suspend fun byQuery(query: Query, limit: Int? = null, offset: Long? = null): Either<Throwable, QueryResult<T>>
 
     /**
      * Returns the amount of entries in the database that match the given [query]
      * @param query Query
      * @return Int
      */
-    suspend fun countOf(query: Query): Long
+    suspend fun countOf(query: Query): Either<Throwable, Long>
 
 }
 
