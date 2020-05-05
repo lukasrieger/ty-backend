@@ -1,17 +1,11 @@
 package repository.extensions
 
-import arrow.core.*
-import arrow.core.Either.Companion.left
-import arrow.core.Either.Companion.right
-import arrow.core.extensions.either.applicative.applicative
-import arrow.core.extensions.list.traverse.sequence
-import kotlinx.coroutines.Dispatchers
+import arrow.core.Either
 import model.Article
-import model.extensions.fromResultRow
-import model.recurrentCopy
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Query
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.statements.UpdateStatement
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.joda.time.DateTime
 import repository.*
 import repository.dao.ArticlesTable

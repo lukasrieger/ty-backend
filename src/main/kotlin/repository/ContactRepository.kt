@@ -1,95 +1,95 @@
 package repository
 
-import arrow.core.Either
+import arrow.Kind
 import arrow.core.Valid
-import arrow.core.extensions.either.monad.flatten
+import arrow.fx.ForIO
 import arrow.fx.IO
-import arrow.fx.extensions.fx
-import kotlinx.coroutines.Dispatchers
+import arrow.fx.extensions.io.concurrent.concurrent
+import arrow.fx.typeclasses.Concurrent
+import arrow.typeclasses.ApplicativeError
 import model.ContactPartner
-import model.extensions.fromResultRow
 import model.id
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.koin.dsl.module
 import repository.dao.ContactTable
-import repository.extensions.paginate
-
-val contactModule = module {
-
-    single { ContactReader }
-    single { ContactWriter }
-    single { ContactRepository }
-}
-
+import repository.extensions.queryPaginate
 
 
 typealias ContactIndex = PrimaryKey<ContactPartner>
 typealias ValidContact = Valid<ContactPartner>
 
 
-object ContactReader : Reader<ContactPartner> {
-    override suspend fun byId(id: PrimaryKey<ContactPartner>): Either<Throwable, ContactPartner?> =
-        IO.fx<Throwable, ContactPartner?> {
-            with(ContactPartner.fromResultRow) {
-                newSuspendedTransaction(Dispatchers.IO) {
-                    ContactTable.select { ContactTable.id eq id.key }
-                        .singleOrNull()
-                        ?.coerce()
-                }
+class ContactReader<F>(A: ApplicativeError<F, Throwable>) :
+    Reader<F, ContactPartner>, ApplicativeError<F, Throwable> by A {
+
+    @JvmName("nullableCoerce")
+    private fun ResultRow?.coerce(): Kind<F, ContactPartner?> = TODO()
+    private fun ResultRow.coerce(): Kind<F, ContactPartner> = TODO()
+
+    override fun Concurrent<F>.byId(id: PrimaryKey<ContactPartner>): Kind<F, ContactPartner?> =
+        fx.concurrent {
+            !!transactionContext(ContactTable) {
+                ContactTable.select { ContactTable.id eq id.key }
+                    .singleOrNull()
+                    .coerce()
             }
-        }.suspended()
+        }
 
 
-    override suspend fun byQuery(
-        query: Query,
-        limit: Int?,
-        offset: Long?
-    ): Either<Throwable, QueryResult<ContactPartner>> =
-        Either.catch {
-            with(ContactPartner.fromResultRow) {
-                val queryResult = query.paginate(limit, offset).map { it.coerce() }
-                countOf(query).map { count ->
-                    QueryResult(count, queryResult)
-                }
-
-            }
-        }.flatten()
+    override fun Concurrent<F>.byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<ContactPartner>> =
+        fx.concurrent {
+            val count = !countOf(query)
+            val queryResult = queryPaginate(query, limit, offset).map { !it.coerce() }
+            QueryResult(count, queryResult)
+        }
 
 
-    override suspend fun countOf(query: Query): Either<Throwable, Long> =
-        Either.catch { newSuspendedTransaction(Dispatchers.IO) { query.count() } }
+    override fun Concurrent<F>.countOf(query: Query): Kind<F, Long> =
+        fx.concurrent {
+            !effect { newSuspendedTransaction { query.count() } }
+        }
 
 }
 
-object ContactWriter : Writer<ContactPartner> {
+class ContactWriter<F>(A: ApplicativeError<F, Throwable>) :
+    Writer<F, ContactPartner>, ApplicativeError<F, Throwable> by A {
 
-    override suspend fun update(entry: ValidContact): Either<Throwable, ValidContact> =
-        transactionContext(ContactTable) {
-            val (contact) = entry
-            val (key) = contact.id
-            update({ id eq key }) { contact.toStatement(it) }
-        }.map { entry }
+    override fun Concurrent<F>.update(entry: Valid<ContactPartner>): Kind<F, Valid<ContactPartner>> =
+        fx.concurrent {
+            !transactionContext(ContactTable) {
+                val (contact) = entry
+                val (key) = contact.id
+                update({ id eq key }) { contact.toStatement(it) }
+            }
 
-
-    override suspend fun create(entry: ValidContact): Either<Throwable, ValidContact> =
-        transactionContext(ContactTable) {
-            val (contact) = entry
-            insert { contact.toStatement(it) } get id
-        }.map { (key) -> Valid(ContactPartner.id.set(entry.a, keyOf(key))) }
+            entry
+        }
 
 
-    override suspend fun delete(id: PrimaryKey<ContactPartner>): Either<Throwable, ContactIndex> =
-        transactionContext(ContactTable) {
-            deleteWhere { ContactTable.id eq id.key }
-        }.map(::keyOf)
+    override fun Concurrent<F>.create(entry: ValidContact): Kind<F, Valid<ContactPartner>> =
+        fx.concurrent {
+            val id = !transactionContext(ContactTable) {
+                val (contact) = entry
+                insert { contact.toStatement(it) } get id
+            }
+
+            Valid(ContactPartner.id.set(entry.a, keyOf(id.value)))
+        }
+
+
+    override fun Concurrent<F>.delete(id: PrimaryKey<ContactPartner>): Kind<F, PrimaryKey<ContactPartner>> =
+        fx.concurrent {
+            !transactionContext(ContactTable) { deleteWhere { ContactTable.id eq id.key } }
+            id
+        }
+
 }
 
-object ContactRepository :
-    Reader<ContactPartner> by ContactReader,
-    Writer<ContactPartner> by ContactWriter,
-    Repository<ContactPartner>
+class ContactRepository<F>(A: ApplicativeError<F, Throwable>) :
+    Reader<F, ContactPartner> by ContactReader(A),
+    Writer<F, ContactPartner> by ContactWriter(A),
+    Repository<F, ContactPartner>
 
 
 private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
@@ -99,3 +99,9 @@ private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
         this[ContactTable.phoneNumber] = phoneNumber
         this[ContactTable.url] = url
     }
+
+
+fun test(repo: ContactRepository<ForIO>) = with(repo) {
+
+    val x = IO.concurrent().delete(keyOf(34))
+}

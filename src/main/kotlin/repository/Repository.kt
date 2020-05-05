@@ -1,11 +1,12 @@
 package repository
 
-import arrow.core.Either
+import arrow.Kind
 import arrow.core.Valid
+import arrow.fx.typeclasses.Concurrent
 import org.jetbrains.exposed.sql.Query
 
 
-interface Reader<T> {
+interface Reader<F, T> {
 
     /**
      * Retrieve an entry from the database that matches the given [id].
@@ -14,7 +15,7 @@ interface Reader<T> {
      * @param id PrimaryKey<T>
      * @return Option<T>
      */
-    suspend fun byId(id: PrimaryKey<T>): Either<Throwable, T?>
+    fun Concurrent<F>.byId(id: PrimaryKey<T>): Kind<F, T?>
 
     /**
      * Retrieve an arbitrary amount of entries from the database that match the given [query].
@@ -25,19 +26,19 @@ interface Reader<T> {
      * @param query Query
      * @return QueryResult<T>
      */
-    suspend fun byQuery(query: Query, limit: Int? = null, offset: Long? = null): Either<Throwable, QueryResult<T>>
+    fun Concurrent<F>.byQuery(query: Query, limit: Int? = null, offset: Long? = null): Kind<F, QueryResult<T>>
 
     /**
      * Returns the amount of entries in the database that match the given [query]
      * @param query Query
      * @return Int
      */
-    suspend fun countOf(query: Query): Either<Throwable, Long>
+    fun Concurrent<F>.countOf(query: Query): Kind<F, Long>
 
 }
 
 
-interface Writer<T> {
+interface Writer<F, T> {
 
     /**
      * Modifies the given [entry] in the database.
@@ -46,7 +47,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun update(entry: Valid<T>): Either<Throwable, Valid<T>>
+    fun Concurrent<F>.update(entry: Valid<T>): Kind<F, Valid<T>>
 
     /**
      * Create a new [entry] in the database.
@@ -55,7 +56,7 @@ interface Writer<T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    suspend fun create(entry: Valid<T>): Either<Throwable, Valid<T>>
+    fun Concurrent<F>.create(entry: Valid<T>): Kind<F, Valid<T>>
 
     /**
      * Removes an entry from the database that matches the given [id].
@@ -63,7 +64,7 @@ interface Writer<T> {
      * @param id PrimaryKey<T>
      * @return PrimaryKey<T>
      */
-    suspend fun delete(id: PrimaryKey<T>): Either<Throwable, PrimaryKey<T>>
+    fun Concurrent<F>.delete(id: PrimaryKey<T>): Kind<F, PrimaryKey<T>>
 
 }
 
@@ -73,4 +74,4 @@ interface Writer<T> {
  * Any class that wants to implement this interface has to be a [Reader] and a [Writer]
  * @param T
  */
-interface Repository<T> : Reader<T>, Writer<T>
+interface Repository<F, T> : Reader<F, T>, Writer<F, T>
