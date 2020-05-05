@@ -1,6 +1,8 @@
 package repository
 
+import arrow.Kind
 import arrow.core.*
+import arrow.fx.typeclasses.Concurrent
 import arrow.syntax.function.pipe
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.dao.id.EntityID
@@ -95,12 +97,10 @@ inline fun <E, A, B> Validated<E, A>.foldV(fe: (E) -> B, fa: (Valid<A>) -> B) = 
     is Validated.Invalid -> (fe(e))
 }
 
-suspend fun <V, E : Table, T> Writer<V>.transactionContext(table: E, f: E.() -> T): Either<Throwable, T> =
-    Either.catch {
-        newSuspendedTransaction(Dispatchers.IO) { table.run(f) }
-    }
 
-suspend fun <V, E : Table, T> Reader<V>.transactionContext(table: E, f: E.() -> T): Either<Throwable, T> =
-    Either.catch {
-        newSuspendedTransaction(Dispatchers.IO) { table.run(f) }
+fun <F, E : Table, T> Concurrent<F>.transactionContext(table: E, f: E.() -> T): Kind<F, T> =
+    effect {
+        newSuspendedTransaction(Dispatchers.IO) {
+            table.run(f)
+        }
     }
