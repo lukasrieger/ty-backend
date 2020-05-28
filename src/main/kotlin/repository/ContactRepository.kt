@@ -3,10 +3,7 @@ package repository
 import arrow.Kind
 import arrow.core.Valid
 import arrow.fx.ForIO
-import arrow.fx.IO
-import arrow.fx.extensions.io.concurrent.concurrent
 import arrow.fx.typeclasses.Concurrent
-import arrow.typeclasses.ApplicativeError
 import model.ContactPartner
 import model.id
 import org.jetbrains.exposed.sql.*
@@ -20,15 +17,14 @@ typealias ContactIndex = PrimaryKey<ContactPartner>
 typealias ValidContact = Valid<ContactPartner>
 
 
-class ContactReader<F>(A: ApplicativeError<F, Throwable>) :
-    Reader<F, ContactPartner>, ApplicativeError<F, Throwable> by A {
+class ContactReader<F>(private val C: Concurrent<F>) : Reader<F, ContactPartner> {
 
     @JvmName("nullableCoerce")
     private fun ResultRow?.coerce(): Kind<F, ContactPartner?> = TODO()
     private fun ResultRow.coerce(): Kind<F, ContactPartner> = TODO()
 
-    override fun Concurrent<F>.byId(id: PrimaryKey<ContactPartner>): Kind<F, ContactPartner?> =
-        fx.concurrent {
+    override fun byId(id: PrimaryKey<ContactPartner>): Kind<F, ContactPartner?> =
+        C.fx.concurrent {
             !!transactionContext(ContactTable) {
                 ContactTable.select { ContactTable.id eq id.key }
                     .singleOrNull()
@@ -37,26 +33,25 @@ class ContactReader<F>(A: ApplicativeError<F, Throwable>) :
         }
 
 
-    override fun Concurrent<F>.byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<ContactPartner>> =
-        fx.concurrent {
+    override fun byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<ContactPartner>> =
+        C.fx.concurrent {
             val count = !countOf(query)
             val queryResult = queryPaginate(query, limit, offset).map { !it.coerce() }
             QueryResult(count, queryResult)
         }
 
 
-    override fun Concurrent<F>.countOf(query: Query): Kind<F, Long> =
-        fx.concurrent {
+    override fun countOf(query: Query): Kind<F, Long> =
+        C.fx.concurrent {
             !effect { newSuspendedTransaction { query.count() } }
         }
 
 }
 
-class ContactWriter<F>(A: ApplicativeError<F, Throwable>) :
-    Writer<F, ContactPartner>, ApplicativeError<F, Throwable> by A {
+class ContactWriter<F>(private val C: Concurrent<F>) : Writer<F, ContactPartner> {
 
-    override fun Concurrent<F>.update(entry: Valid<ContactPartner>): Kind<F, Valid<ContactPartner>> =
-        fx.concurrent {
+    override fun update(entry: Valid<ContactPartner>): Kind<F, Valid<ContactPartner>> =
+        C.fx.concurrent {
             !transactionContext(ContactTable) {
                 val (contact) = entry
                 val (key) = contact.id
@@ -67,8 +62,8 @@ class ContactWriter<F>(A: ApplicativeError<F, Throwable>) :
         }
 
 
-    override fun Concurrent<F>.create(entry: ValidContact): Kind<F, Valid<ContactPartner>> =
-        fx.concurrent {
+    override fun create(entry: ValidContact): Kind<F, Valid<ContactPartner>> =
+        C.fx.concurrent {
             val id = !transactionContext(ContactTable) {
                 val (contact) = entry
                 insert { contact.toStatement(it) } get id
@@ -78,17 +73,17 @@ class ContactWriter<F>(A: ApplicativeError<F, Throwable>) :
         }
 
 
-    override fun Concurrent<F>.delete(id: PrimaryKey<ContactPartner>): Kind<F, PrimaryKey<ContactPartner>> =
-        fx.concurrent {
+    override fun delete(id: PrimaryKey<ContactPartner>): Kind<F, PrimaryKey<ContactPartner>> =
+        C.fx.concurrent {
             !transactionContext(ContactTable) { deleteWhere { ContactTable.id eq id.key } }
             id
         }
 
 }
 
-class ContactRepository<F>(A: ApplicativeError<F, Throwable>) :
-    Reader<F, ContactPartner> by ContactReader(A),
-    Writer<F, ContactPartner> by ContactWriter(A),
+class ContactRepository<F>(C: Concurrent<F>) :
+    Reader<F, ContactPartner> by ContactReader(C),
+    Writer<F, ContactPartner> by ContactWriter(C),
     Repository<F, ContactPartner>
 
 
@@ -101,7 +96,8 @@ private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
     }
 
 
-fun test(repo: ContactRepository<ForIO>) = with(repo) {
+fun test(repo: ContactRepository<ForIO>) {
 
-    val x = IO.concurrent().delete(keyOf(34))
+    val x = repo.delete(keyOf(234))
+
 }

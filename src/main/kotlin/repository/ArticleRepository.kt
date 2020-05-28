@@ -4,7 +4,6 @@ import arrow.Kind
 import arrow.core.Either
 import arrow.core.Valid
 import arrow.fx.typeclasses.Concurrent
-import arrow.typeclasses.ApplicativeError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import model.Article
@@ -24,16 +23,15 @@ typealias ArticleIndex = PrimaryKey<Article>
 typealias ValidArticle = Valid<Article>
 
 
-class ArticleReader<F>(A: ApplicativeError<F, Throwable>) :
-    Reader<F, Article>, ApplicativeError<F, Throwable> by A {
+class ArticleReader<F>(private val C: Concurrent<F>) : Reader<F, Article> {
 
     @JvmName("nullableCoerce")
     private fun ResultRow?.coerce(): Kind<F, Article?> = TODO()
     private fun ResultRow.coerce(): Kind<F, Article> = TODO()
 
 
-    override fun Concurrent<F>.byId(id: PrimaryKey<Article>): Kind<F, Article?> =
-        fx.concurrent {
+    override fun byId(id: PrimaryKey<Article>): Kind<F, Article?> =
+        C.fx.concurrent {
             !!transactionContext(ArticlesTable) {
                 with(Article.fromResultRow) {
                     select { ArticlesTable.id eq id.key }
@@ -44,8 +42,8 @@ class ArticleReader<F>(A: ApplicativeError<F, Throwable>) :
             }
         }
 
-    override fun Concurrent<F>.byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<Article>> =
-        fx.concurrent {
+    override fun byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<Article>> =
+        C.fx.concurrent {
             val count = !countOf(query)
             val queryResult =
                 queryPaginate(query, limit, offset).map { !it.coerce() }
@@ -53,20 +51,18 @@ class ArticleReader<F>(A: ApplicativeError<F, Throwable>) :
             QueryResult(count, queryResult)
         }
 
-    override fun Concurrent<F>.countOf(query: Query): Kind<F, Long> =
-        fx.concurrent {
+    override fun countOf(query: Query): Kind<F, Long> =
+        C.fx.concurrent {
             !effect { newSuspendedTransaction { query.count() } }
         }
 
 }
 
 
-class ArticleWriter<F>(A: ApplicativeError<F, Throwable>) :
-    Writer<F, Article>, ApplicativeError<F, Throwable> by A {
+class ArticleWriter<F>(private val C: Concurrent<F>) : Writer<F, Article> {
 
-
-    override fun Concurrent<F>.update(entry: Valid<Article>): Kind<F, ValidArticle> =
-        fx.concurrent {
+    override fun update(entry: Valid<Article>): Kind<F, ValidArticle> =
+        C.fx.concurrent {
             !transactionContext(ArticlesTable) {
                 val (article) = entry
                 val (key) = article.id
@@ -75,8 +71,8 @@ class ArticleWriter<F>(A: ApplicativeError<F, Throwable>) :
             entry
         }
 
-    override fun Concurrent<F>.create(entry: Valid<Article>): Kind<F, ValidArticle> =
-        fx.concurrent {
+    override fun create(entry: Valid<Article>): Kind<F, ValidArticle> =
+        C.fx.concurrent {
             val id = !transactionContext(ArticlesTable) {
                 val (article) = entry
                 ArticlesTable.insert { article.toStatement(it) } get ArticlesTable.id
@@ -84,8 +80,8 @@ class ArticleWriter<F>(A: ApplicativeError<F, Throwable>) :
             Valid(Article.id.set(entry.a, keyOf(id.value)))
         }
 
-    override fun Concurrent<F>.delete(id: PrimaryKey<Article>): Kind<F, PrimaryKey<Article>> =
-        fx.concurrent {
+    override fun delete(id: PrimaryKey<Article>): Kind<F, PrimaryKey<Article>> =
+        C.fx.concurrent {
             !transactionContext(ArticlesTable) {
                 update({ childArticle eq id.key }) { it[childArticle] = null }
                 update({ parentArticle eq id.key }) { it[parentArticle] = null }
@@ -97,9 +93,9 @@ class ArticleWriter<F>(A: ApplicativeError<F, Throwable>) :
 }
 
 
-class ArticleRepository<F>(A: ApplicativeError<F, Throwable>) :
-    Reader<F, Article> by ArticleReader(A),
-    Writer<F, Article> by ArticleWriter(A),
+class ArticleRepository<F>(C: Concurrent<F>) :
+    Reader<F, Article> by ArticleReader(C),
+    Writer<F, Article> by ArticleWriter(C),
     Repository<F, Article>
 
 
