@@ -19,3 +19,4 @@ private object ContactPartnerFromResultRow : Coerce<ResultRow, ContactPartner> {
 val ContactPartner.Companion.fromResultRow: Coerce<ResultRow, ContactPartner>
     get() = ContactPartnerFromResultRow
 
+

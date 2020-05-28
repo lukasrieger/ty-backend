@@ -2,7 +2,6 @@ package repository
 
 import arrow.Kind
 import arrow.core.Valid
-import arrow.fx.typeclasses.Concurrent
 import org.jetbrains.exposed.sql.Query
 
 
@@ -15,7 +14,7 @@ interface Reader<F, T> {
      * @param id PrimaryKey<T>
      * @return Option<T>
      */
-    fun Concurrent<F>.byId(id: PrimaryKey<T>): Kind<F, T?>
+    fun byId(id: PrimaryKey<T>): Kind<F, T?>
 
     /**
      * Retrieve an arbitrary amount of entries from the database that match the given [query].
@@ -26,14 +25,14 @@ interface Reader<F, T> {
      * @param query Query
      * @return QueryResult<T>
      */
-    fun Concurrent<F>.byQuery(query: Query, limit: Int? = null, offset: Long? = null): Kind<F, QueryResult<T>>
+    fun byQuery(query: Query, limit: Int? = null, offset: Long? = null): Kind<F, QueryResult<T>>
 
     /**
      * Returns the amount of entries in the database that match the given [query]
      * @param query Query
      * @return Int
      */
-    fun Concurrent<F>.countOf(query: Query): Kind<F, Long>
+    fun countOf(query: Query): Kind<F, Long>
 
 }
 
@@ -47,7 +46,7 @@ interface Writer<F, T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    fun Concurrent<F>.update(entry: Valid<T>): Kind<F, Valid<T>>
+    fun update(entry: Valid<T>): Kind<F, Valid<T>>
 
     /**
      * Create a new [entry] in the database.
@@ -56,7 +55,7 @@ interface Writer<F, T> {
      * @param entry T
      * @return PrimaryKey<T>
      */
-    fun Concurrent<F>.create(entry: Valid<T>): Kind<F, Valid<T>>
+    fun create(entry: Valid<T>): Kind<F, Valid<T>>
 
     /**
      * Removes an entry from the database that matches the given [id].
@@ -64,7 +63,7 @@ interface Writer<F, T> {
      * @param id PrimaryKey<T>
      * @return PrimaryKey<T>
      */
-    fun Concurrent<F>.delete(id: PrimaryKey<T>): Kind<F, PrimaryKey<T>>
+    fun delete(id: PrimaryKey<T>): Kind<F, PrimaryKey<T>>
 
 }
 
