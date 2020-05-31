@@ -3,6 +3,8 @@ package repository
 import arrow.core.Either
 import arrow.core.Valid
 import arrow.core.extensions.either.monad.flatten
+import arrow.fx.IO
+import arrow.fx.extensions.fx
 import kotlinx.coroutines.Dispatchers
 import model.ContactPartner
 import model.extensions.fromResultRow
@@ -21,13 +23,15 @@ val contactModule = module {
     single { ContactRepository }
 }
 
+
+
 typealias ContactIndex = PrimaryKey<ContactPartner>
 typealias ValidContact = Valid<ContactPartner>
 
 
 object ContactReader : Reader<ContactPartner> {
     override suspend fun byId(id: PrimaryKey<ContactPartner>): Either<Throwable, ContactPartner?> =
-        Either.catch {
+        IO.fx<Throwable, ContactPartner?> {
             with(ContactPartner.fromResultRow) {
                 newSuspendedTransaction(Dispatchers.IO) {
                     ContactTable.select { ContactTable.id eq id.key }
@@ -35,7 +39,7 @@ object ContactReader : Reader<ContactPartner> {
                         ?.coerce()
                 }
             }
-        }
+        }.suspended()
 
 
     override suspend fun byQuery(

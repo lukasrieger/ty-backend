@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.joda.time.DateTime
 import repository.*
 import repository.dao.ArticlesTable
+import validation.ArticleValidator
 
 
 internal fun queryPaginate(
@@ -79,18 +80,15 @@ suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> =
                     (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
                     ArticlesTable.childArticle.isNull()
 
-        }
-            .map {
-                val article = it.coerce()
-                article to article.recurrentCopy()
-            }
-    }
-        .map { (parent, child) ->
-            val (parentKey) = parent.id
-            val (childKey) = child.id
+        }.map { it.coerce() }
+    }.map { parent ->
 
+        val parentKey = parent.id.key
+        val child = parent.recurrentCopy()
+        val childKey = child.id.key
 
-            create(Validated.Valid(child)).fold(
+        when (val check = ArticleValidator.validate(child)) {
+            is Validated.Valid -> create(check).fold(
                 ifLeft = ::left,
                 ifRight = {
                     updateArticle(parentKey) {
@@ -99,9 +97,10 @@ suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> =
                     }
                 }
             )
-
+            is Validated.Invalid -> left(Throwable("Child of article $parentKey cannot be validated."))
         }
-        .sequence(Either.applicative()).fix() // Turns List<Either<L,R>> into Either<L,List<R>>
+    }
+        .sequence(Either.applicative()).fix()
         .fold(
             ifLeft = ::left,
             ifRight = { right(Unit) }

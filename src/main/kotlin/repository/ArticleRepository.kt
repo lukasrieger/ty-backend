@@ -4,10 +4,8 @@ import arrow.core.Either
 import arrow.core.Valid
 import arrow.core.extensions.either.monad.flatten
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import model.Article
 import model.RecurrentInfo
-import model.Source
 import model.extensions.fromResultRow
 import model.id
 import org.jetbrains.exposed.sql.*
@@ -16,7 +14,6 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.koin.dsl.module
 import repository.dao.ArticlesTable
 import repository.extensions.queryPaginate
-import java.io.FileInputStream
 
 
 val articleModule = module {
@@ -125,17 +122,5 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.nextArchiveDate] = recurrentInfo?.archiveDate
     }
 
-internal fun sourcePath(path: String): String = TODO()
-
-internal suspend fun loadSource(url: String): Either<Throwable, Source> = Either.catch {
-    withContext(Dispatchers.IO) {
-        FileInputStream(sourcePath(url)).use {
-            val bytes = it.readBytes()
-            val text = String(bytes)
-
-            Source(url, text)
-        }
-    }
-}
 
 
