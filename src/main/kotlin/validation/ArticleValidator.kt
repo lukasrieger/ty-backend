@@ -2,6 +2,9 @@ package validation
 
 import arrow.core.invalid
 import arrow.core.valid
+import arrow.fx.IO
+import arrow.fx.extensions.io.concurrent.concurrent
+import arrow.fx.typeclasses.Concurrent
 import model.*
 import org.joda.time.DateTime
 import org.koin.core.KoinComponent
@@ -11,27 +14,28 @@ import repository.ArticleReader
 import repository.PrimaryKey
 
 val validationModule = module {
-    single { ArticleValidator }
+    single { ArticleValidator(IO.concurrent()) }
 }
 
 
-object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), KoinComponent {
+class ArticleValidator<F>(override val runtime: Concurrent<F>) :
+    AbstractValidator<F, ArticleValidationError, Article>(), KoinComponent {
 
-    private val articleReader: ArticleReader by inject()
+    private val articleReader: ArticleReader<F> by inject()
 
     val validTitle = validation {
         if (it.title.isNotBlank()) {
-            it.valid()
+            just(it.valid())
         } else {
-            ArticleValidationError.BlankField(Article::title).invalid()
+            just(ArticleValidationError.BlankField(Article::title).invalid())
         }
     }
 
     val validApplicationDate = validation {
         if (it.applicationDeadline.isBefore(it.archiveDate)) {
-            it.valid()
+            just(it.valid())
         } else {
-            ArticleValidationError.InvalidApplicationDate(it.applicationDeadline).invalid()
+            just(ArticleValidationError.InvalidApplicationDate(it.applicationDeadline).invalid())
         }
     }
 
@@ -51,18 +55,20 @@ object ArticleValidator : AbstractValidator<ArticleValidationError, Article>(), 
             ).invalid()
 
 
-        suspend fun checkParentPresent(key: PrimaryKey<Article>) =
-            articleReader.byId(key)?.let(::checkSymmetry) ?: ArticleValidationError.MissingArticle(key).invalid()
+        fun Concurrent<F>.checkParentPresent(key: PrimaryKey<Article>) =
+            fx.concurrent {
+                articleReader.byId(key).bind()?.let(::checkSymmetry) ?: ArticleValidationError.MissingArticle(key)
+                    .invalid()
+            }
 
-
-        article.parentArticle?.let { checkParentPresent(it) } ?: article.valid()
+        article.parentArticle?.let { checkParentPresent(it) } ?: just(article.valid())
 
     }
 
 }
 
 
-suspend fun Validator<ArticleValidationError, Article>.validate(
+suspend fun <F> Validator<F, ArticleValidationError, Article>.validate(
     id: PrimaryKey<Article> = repository.Init,
     title: String,
     text: String,

@@ -2,8 +2,8 @@ package repository
 
 import arrow.Kind
 import arrow.core.Valid
-import arrow.fx.ForIO
 import arrow.fx.typeclasses.Concurrent
+import arrow.syntax.function.pipe
 import model.ContactPartner
 import model.id
 import org.jetbrains.exposed.sql.*
@@ -11,48 +11,62 @@ import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import repository.dao.ContactTable
 import repository.extensions.queryPaginate
+import validation.Validator
 
 
 typealias ContactIndex = PrimaryKey<ContactPartner>
 typealias ValidContact = Valid<ContactPartner>
 
+@JvmName("nullableToContactPartner")
+fun <F> Concurrent<F>.toContactPartner(resultRow: ResultRow?): Kind<F, ContactPartner?> =
+    resultRow?.let { toContactPartner(it) } ?: just(null)
 
-class ContactReader<F>(private val C: Concurrent<F>) : Reader<F, ContactPartner> {
+fun <F> Concurrent<F>.toContactPartner(resultRow: ResultRow): Kind<F, ContactPartner> =
+    fx.concurrent {
+        ContactPartner(
+            id = keyOf(resultRow[ContactTable.id].value),
+            surname = resultRow[ContactTable.firstName],
+            lastName = resultRow[ContactTable.lastName],
+            phoneNumber = resultRow[ContactTable.phoneNumber],
+            url = resultRow[ContactTable.url]
+        )
+    }
 
-    @JvmName("nullableCoerce")
-    private fun ResultRow?.coerce(): Kind<F, ContactPartner?> = TODO()
-    private fun ResultRow.coerce(): Kind<F, ContactPartner> = TODO()
+
+class ContactReader<F>(override val runtime: Concurrent<F>) : Reader<F, ContactPartner> {
+
 
     override fun byId(id: PrimaryKey<ContactPartner>): Kind<F, ContactPartner?> =
-        C.fx.concurrent {
-            !!transactionContext(ContactTable) {
+        concurrent {
+            !!transactionEffect(ContactTable) {
                 ContactTable.select { ContactTable.id eq id.key }
                     .singleOrNull()
-                    .coerce()
+                    .pipe { toContactPartner<F>(it) }
             }
         }
 
 
     override fun byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<ContactPartner>> =
-        C.fx.concurrent {
+        concurrent {
             val count = !countOf(query)
-            val queryResult = queryPaginate(query, limit, offset).map { !it.coerce() }
+            val queryResult = queryPaginate(query, limit, offset).bind()
+                .map { !toContactPartner<F>(it) }
             QueryResult(count, queryResult)
         }
 
 
     override fun countOf(query: Query): Kind<F, Long> =
-        C.fx.concurrent {
+        concurrent {
             !effect { newSuspendedTransaction { query.count() } }
         }
 
 }
 
-class ContactWriter<F>(private val C: Concurrent<F>) : Writer<F, ContactPartner> {
+class ContactWriter<F>(override val runtime: Concurrent<F>) : Writer<F, ContactPartner> {
 
     override fun update(entry: Valid<ContactPartner>): Kind<F, Valid<ContactPartner>> =
-        C.fx.concurrent {
-            !transactionContext(ContactTable) {
+        concurrent {
+            !transactionEffect(ContactTable) {
                 val (contact) = entry
                 val (key) = contact.id
                 update({ id eq key }) { contact.toStatement(it) }
@@ -63,8 +77,8 @@ class ContactWriter<F>(private val C: Concurrent<F>) : Writer<F, ContactPartner>
 
 
     override fun create(entry: ValidContact): Kind<F, Valid<ContactPartner>> =
-        C.fx.concurrent {
-            val id = !transactionContext(ContactTable) {
+        concurrent {
+            val id = !transactionEffect(ContactTable) {
                 val (contact) = entry
                 insert { contact.toStatement(it) } get id
             }
@@ -73,17 +87,20 @@ class ContactWriter<F>(private val C: Concurrent<F>) : Writer<F, ContactPartner>
         }
 
 
-    override fun delete(id: PrimaryKey<ContactPartner>): Kind<F, PrimaryKey<ContactPartner>> =
-        C.fx.concurrent {
-            !transactionContext(ContactTable) { deleteWhere { ContactTable.id eq id.key } }
+    override fun delete(id: ContactIndex): Kind<F, PrimaryKey<ContactPartner>> =
+        concurrent {
+            !transactionEffect(ContactTable) { deleteWhere { ContactTable.id eq id.key } }
             id
         }
 
 }
 
-class ContactRepository<F>(C: Concurrent<F>) :
-    Reader<F, ContactPartner> by ContactReader(C),
-    Writer<F, ContactPartner> by ContactWriter(C),
+class ContactRepository<F>(
+    override val runtime: Concurrent<F>,
+    override val validator: Validator<F, *, ContactPartner>
+) :
+    Reader<F, ContactPartner> by ContactReader(runtime),
+    Writer<F, ContactPartner> by ContactWriter(runtime),
     Repository<F, ContactPartner>
 
 
@@ -94,10 +111,3 @@ private fun ContactPartner.toStatement(statement: UpdateBuilder<Int>) =
         this[ContactTable.phoneNumber] = phoneNumber
         this[ContactTable.url] = url
     }
-
-
-fun test(repo: ContactRepository<ForIO>) {
-
-    val x = repo.delete(keyOf(234))
-
-}

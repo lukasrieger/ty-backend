@@ -1,23 +1,27 @@
 package repository.extensions
 
-import arrow.core.Either
+import arrow.Kind
+import arrow.core.Validated
+import arrow.fx.typeclasses.Concurrent
+import arrow.typeclasses.Show
 import model.Article
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Query
-import org.jetbrains.exposed.sql.SortOrder
+import model.recurrentCopy
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateStatement
 import org.joda.time.DateTime
 import repository.*
 import repository.dao.ArticlesTable
 
 
-internal fun queryPaginate(
+internal fun <F> Concurrent<F>.queryPaginate(
     query: Query,
     limit: Int? = null,
     offset: Long? = null,
     ordering: () -> Pair<Column<DateTime>, SortOrder> = { ArticlesTable.applicationDeadline to SortOrder.ASC }
-): Query = query.paginate(limit, offset)
-    .orderBy(ordering())
+): Kind<F, Query> = fx.concurrent {
+    query.paginate(limit, offset)
+        .orderBy(ordering())
+}
 
 
 /**
@@ -30,78 +34,67 @@ internal fun queryPaginate(
  * @param query Query
  * @return QueryResult<Article>
  */
-suspend fun Reader<Article>.byQueryArchived(
+fun <F> Reader<F, Article>.byQueryArchived(
     query: Query,
     limit: Int?,
     offset: Long?
-): Either<Throwable, QueryResult<Article>> = with(Article.fromResultRow) {
-    countOf(query).fold(
-        ifLeft = ::Left,
-        ifRight = { count ->
-            val queryResult = queryPaginate(query, limit, offset) {
-                ArticlesTable.archiveDate to SortOrder.DESC
-            }
-                .andWhere { ArticlesTable.archiveDate less DateTime.now() }
-                .map { it.coerce() }
+): Kind<F, QueryResult<Article>> =
+    byQuery(
+        query = query
+            .andWhere { ArticlesTable.archiveDate less DateTime.now() }
+            .orderBy(ArticlesTable.archiveDate to SortOrder.DESC),
+        limit = limit,
+        offset = offset
 
-            Right(QueryResult(count, queryResult))
-        }
     )
-}
 
 
-private suspend fun <T> Writer<T>.updateArticle(
+private fun <F> Writer<F, Article>.updateArticle(
     id: Int,
     statement: UpdateStatement.() -> Unit
-): Either<Throwable, ArticleIndex> =
-    transactionContext(ArticlesTable) {
-        update({ ArticlesTable.id eq id }) {
-            it.run(statement)
+): Kind<F, ArticleIndex> =
+    runtime.fx.concurrent {
+        val dbResult = !transactionEffect(ArticlesTable) {
+            update({ ArticlesTable.id eq id }) { it.run(statement) }
         }
-    }.map(::keyOf)
-
-
-/**
- * @receiver Repository<Article>
- * @return Result<Unit>
- */
-suspend fun Writer<Article>.createRecurrentArticles(): Either<Throwable, Unit> = with(Article.fromResultRow) {
-    newSuspendedTransaction(Dispatchers.IO) {
-        ArticlesTable.select {
-
-            (ArticlesTable.isRecurrent eq true) and
-                    (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
-                    ArticlesTable.childArticle.isNull()
-
-        }
-            .map {
-                val article = it.coerce()
-                article to article.recurrentCopy()
-            }
+        keyOf<Article>(dbResult)
     }
-        .map { (parent, child) ->
-            val (parentKey) = parent.id
-            val (childKey) = child.id
 
 
-            create(Validated.Valid(child)).fold(
-                ifLeft = ::left,
-                ifRight = {
-                    updateArticle(parentKey) {
-                        this[ArticlesTable.childArticle] = childKey
-                        this[ArticlesTable.isRecurrent] = false
-                    }
-                }
-            )
+private fun <F> Repository<F, Article>.selectRecurrentArticles(): Kind<F, List<Pair<Article, Article>>> =
+    runtime.fx.concurrent {
+        byQuery(
+            query = ArticlesTable.select {
+                (ArticlesTable.isRecurrent eq true) and
+                        (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
+                        ArticlesTable.childArticle.isNull()
+            }
+        ).bind().result.map { it to it.recurrentCopy() }
+    }
 
+private fun <F> Repository<F, Article>.runRecurrenceUpdate(parent: Article, child: Article): Kind<F, ArticleIndex> =
+    runtime.fx.concurrent {
+        val (parentKey) = parent.id
+        val (childKey) = child.id
+
+        val x = !when (val res = !validator.validate(child)) {
+            is Validated.Valid -> create(res)
+            is Validated.Invalid -> raiseError(Throwable(res.e.show(Show.any())))
         }
-        .sequence(Either.applicative()).fix() // Turns List<Either<L,R>> into Either<L,List<R>>
-        .fold(
-            ifLeft = ::left,
-            ifRight = { right(Unit) }
-        )
 
-}
+        !updateArticle(parentKey) {
+            this[ArticlesTable.childArticle] = childKey
+            this[ArticlesTable.isRecurrent] = false
+        }
+
+    }
+
+fun <F> Repository<F, Article>.createRecurrentArticles(): Kind<F, List<ArticleIndex>> =
+    runtime.fx.concurrent {
+        val recurrentArticles = !selectRecurrentArticles()
+
+        recurrentArticles.map { (parent, child) -> !runRecurrenceUpdate(parent, child) }
+    }
 
 
 internal fun Query.paginate(limit: Int?, offset: Long?): Query = apply {
