@@ -8,6 +8,7 @@ import kotlin.reflect.KProperty1
 
 sealed class ArticleValidationError {
 
+
     data class InvalidApplicationDate(val date: DateTime) : ArticleValidationError()
 
     data class InvalidPriority(val priority: Priority) : ArticleValidationError()

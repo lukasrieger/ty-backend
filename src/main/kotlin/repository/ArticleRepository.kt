@@ -1,66 +1,84 @@
 package repository
 
 import arrow.Kind
-import arrow.core.Either
 import arrow.core.Valid
 import arrow.fx.typeclasses.Concurrent
-import kotlinx.coroutines.Dispatchers
-import model.Article
-import model.RecurrentInfo
-import model.extensions.fromResultRow
-import model.id
+import arrow.syntax.function.pipe
+import model.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import repository.dao.ArticlesTable
 import repository.extensions.queryPaginate
+import validation.Validator
+import java.io.FileInputStream
 
 
 typealias ArticleIndex = PrimaryKey<Article>
 typealias ValidArticle = Valid<Article>
 
+@JvmName("nullableToArticle")
+fun <F> Concurrent<F>.toArticle(resultRow: ResultRow?, contactReader: Reader<F, ContactPartner>): Kind<F, Article?> =
+    resultRow?.let { toArticle(it, contactReader) } ?: just(null)
 
-class ArticleReader<F>(private val C: Concurrent<F>) : Reader<F, Article> {
+fun <F> Concurrent<F>.toArticle(resultRow: ResultRow, contactReader: Reader<F, ContactPartner>): Kind<F, Article> =
+    fx.concurrent {
+        Article(
+            id = keyOf(resultRow[ArticlesTable.id].value),
+            title = resultRow[ArticlesTable.title],
+            text = resultRow[ArticlesTable.text],
+            rubric = resultRow[ArticlesTable.rubric],
+            priority = resultRow[ArticlesTable.priority],
+            targetGroup = resultRow[ArticlesTable.targetGroup],
+            supportType = resultRow[ArticlesTable.supportType],
+            subject = resultRow[ArticlesTable.subject],
+            state = resultRow[ArticlesTable.state],
+            archiveDate = resultRow[ArticlesTable.archiveDate],
+            recurrentInfo = readRecurrence(resultRow),
+            applicationDeadline = resultRow[ArticlesTable.applicationDeadline],
+            contactPartner = resultRow[ArticlesTable.contactPartner]?.let { !contactReader.byId(keyOf(it)) },
+            childArticle = resultRow[ArticlesTable.childArticle]?.let { keyOf<Article>(it) },
+            parentArticle = resultRow[ArticlesTable.parentArticle]?.let { keyOf<Article>(it) }
+        )
+    }
 
-    @JvmName("nullableCoerce")
-    private fun ResultRow?.coerce(): Kind<F, Article?> = TODO()
-    private fun ResultRow.coerce(): Kind<F, Article> = TODO()
-
+class ArticleReader<F>(
+    override val runtime: Concurrent<F>,
+    private val contactReader: Reader<F, ContactPartner>
+) : Reader<F, Article> {
 
     override fun byId(id: PrimaryKey<Article>): Kind<F, Article?> =
-        C.fx.concurrent {
-            !!transactionContext(ArticlesTable) {
-                with(Article.fromResultRow) {
-                    select { ArticlesTable.id eq id.key }
-                        .orderBy(applicationDeadline to SortOrder.ASC)
-                        .singleOrNull()
-                        .coerce()
-                }
+        concurrent {
+            !!transactionEffect(ArticlesTable) {
+                select { ArticlesTable.id eq id.key }
+                    .orderBy(applicationDeadline to SortOrder.ASC)
+                    .singleOrNull()
+                    .pipe { toArticle<F>(it, contactReader) }
             }
         }
 
     override fun byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<Article>> =
-        C.fx.concurrent {
+        concurrent {
             val count = !countOf(query)
-            val queryResult =
-                queryPaginate(query, limit, offset).map { !it.coerce() }
+            val queryResult = queryPaginate(query, limit, offset)
+                .bind()
+                .map { !toArticle<F>(it, contactReader) }
 
             QueryResult(count, queryResult)
         }
 
     override fun countOf(query: Query): Kind<F, Long> =
-        C.fx.concurrent {
+        concurrent {
             !effect { newSuspendedTransaction { query.count() } }
         }
-
 }
 
 
-class ArticleWriter<F>(private val C: Concurrent<F>) : Writer<F, Article> {
+class ArticleWriter<F>(override val runtime: Concurrent<F>) : Writer<F, Article> {
 
     override fun update(entry: Valid<Article>): Kind<F, ValidArticle> =
-        C.fx.concurrent {
-            !transactionContext(ArticlesTable) {
+        concurrent {
+            !transactionEffect(ArticlesTable) {
                 val (article) = entry
                 val (key) = article.id
                 ArticlesTable.update({ ArticlesTable.id eq key }) { article.toStatement(it) }
@@ -69,8 +87,8 @@ class ArticleWriter<F>(private val C: Concurrent<F>) : Writer<F, Article> {
         }
 
     override fun create(entry: Valid<Article>): Kind<F, ValidArticle> =
-        C.fx.concurrent {
-            val id = !transactionContext(ArticlesTable) {
+        concurrent {
+            val id = !transactionEffect(ArticlesTable) {
                 val (article) = entry
                 ArticlesTable.insert { article.toStatement(it) } get ArticlesTable.id
             }
@@ -78,21 +96,24 @@ class ArticleWriter<F>(private val C: Concurrent<F>) : Writer<F, Article> {
         }
 
     override fun delete(id: PrimaryKey<Article>): Kind<F, PrimaryKey<Article>> =
-        C.fx.concurrent {
-            !transactionContext(ArticlesTable) {
+        concurrent {
+            !transactionEffect(ArticlesTable) {
                 update({ childArticle eq id.key }) { it[childArticle] = null }
                 update({ parentArticle eq id.key }) { it[parentArticle] = null }
                 deleteWhere { ArticlesTable.id eq id.key }
             }
             id
         }
-
 }
 
 
-class ArticleRepository<F>(C: Concurrent<F>) :
-    Reader<F, Article> by ArticleReader(C),
-    Writer<F, Article> by ArticleWriter(C),
+class ArticleRepository<F>(
+    override val runtime: Concurrent<F>,
+    override val validator: Validator<F, *, Article>,
+    contactReader: Reader<F, ContactPartner>
+) :
+    Reader<F, Article> by ArticleReader(runtime, contactReader),
+    Writer<F, Article> by ArticleWriter(runtime),
     Repository<F, Article>
 
 
@@ -126,5 +147,22 @@ private fun Article.toStatement(statement: UpdateBuilder<Int>) =
         this[ArticlesTable.nextArchiveDate] = recurrentInfo?.archiveDate
     }
 
+
+internal fun sourcePath(path: String): String = TODO()
+
+
+fun <F> Concurrent<F>.loadSource(url: String): Kind<F, Source?> =
+    fx.concurrent {
+        !just(FileInputStream(sourcePath(url)))
+            .bracket(
+                release = { file -> just(file.close()) },
+                use = { file ->
+                    val bytes = file.readBytes()
+                    val text = String(bytes)
+
+                    just(Source(url, text))
+                }
+            )
+    }
 
 
