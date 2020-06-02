@@ -18,10 +18,16 @@ typealias ArticleIndex = PrimaryKey<Article>
 typealias ValidArticle = Valid<Article>
 
 @JvmName("nullableToArticle")
-fun <F> Concurrent<F>.toArticle(resultRow: ResultRow?, contactReader: Reader<F, ContactPartner>): Kind<F, Article?> =
+internal fun <F> Concurrent<F>.toArticle(
+    resultRow: ResultRow?,
+    contactReader: Reader<F, ContactPartner>
+): Kind<F, Article?> =
     resultRow?.let { toArticle(it, contactReader) } ?: just(null)
 
-fun <F> Concurrent<F>.toArticle(resultRow: ResultRow, contactReader: Reader<F, ContactPartner>): Kind<F, Article> =
+internal fun <F> Concurrent<F>.toArticle(
+    resultRow: ResultRow,
+    contactReader: Reader<F, ContactPartner>
+): Kind<F, Article> =
     fx.concurrent {
         Article(
             id = keyOf(resultRow[ArticlesTable.id].value),
@@ -60,11 +66,10 @@ class ArticleReader<F>(
     override fun byQuery(query: Query, limit: Int?, offset: Long?): Kind<F, QueryResult<Article>> =
         concurrent {
             val count = !countOf(query)
-            val queryResult = queryPaginate(query, limit, offset)
-                .bind()
-                .map { !toArticle<F>(it, contactReader) }
+            val resultQuery = !queryPaginate(query, limit, offset)
+            val articles = !resultQuery.parTraverse { toArticle<F>(it, contactReader) }
 
-            QueryResult(count, queryResult)
+            QueryResult(count, articles)
         }
 
     override fun countOf(query: Query): Kind<F, Long> =

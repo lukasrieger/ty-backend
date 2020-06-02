@@ -57,8 +57,8 @@ class ArticleValidator<F>(override val runtime: Concurrent<F>) :
 
         fun Concurrent<F>.checkParentPresent(key: PrimaryKey<Article>) =
             fx.concurrent {
-                articleReader.byId(key).bind()?.let(::checkSymmetry) ?: ArticleValidationError.MissingArticle(key)
-                    .invalid()
+                (!articleReader.byId(key))?.let(::checkSymmetry)
+                    ?: ArticleValidationError.MissingArticle(key).invalid()
             }
 
         article.parentArticle?.let { checkParentPresent(it) } ?: just(article.valid())
@@ -68,7 +68,7 @@ class ArticleValidator<F>(override val runtime: Concurrent<F>) :
 }
 
 
-suspend fun <F> Validator<F, ArticleValidationError, Article>.validate(
+fun <F> Validator<F, ArticleValidationError, Article>.validate(
     id: PrimaryKey<Article> = repository.Init,
     title: String,
     text: String,

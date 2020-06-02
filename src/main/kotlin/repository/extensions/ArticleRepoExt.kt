@@ -53,48 +53,64 @@ private fun <F> Writer<F, Article>.updateArticle(
     id: Int,
     statement: UpdateStatement.() -> Unit
 ): Kind<F, ArticleIndex> =
-    runtime.fx.concurrent {
+    concurrent {
         val dbResult = !transactionEffect(ArticlesTable) {
             update({ ArticlesTable.id eq id }) { it.run(statement) }
         }
         keyOf<Article>(dbResult)
     }
 
+/**
+ * The returned ArticleIndices refer to the parent articles which were selected by this method.
+ */
+fun <F> Repository<F, Article>.createRecurrentArticles(): Kind<F, List<ArticleIndex>> {
+    
+    /**
+     * Selects all articles for which a recurrent child can currently be created
+     */
+    fun selectRecurrentArticles(): Kind<F, List<Pair<Article, Article>>> =
+        concurrent {
+            byQuery(
+                query = ArticlesTable.select {
+                    (ArticlesTable.isRecurrent eq true) and
+                            (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
+                            ArticlesTable.childArticle.isNull()
+                }
+            ).bind().result.map { it to it.recurrentCopy() }
+        }
 
-private fun <F> Repository<F, Article>.selectRecurrentArticles(): Kind<F, List<Pair<Article, Article>>> =
-    runtime.fx.concurrent {
-        byQuery(
-            query = ArticlesTable.select {
-                (ArticlesTable.isRecurrent eq true) and
-                        (ArticlesTable.applicationDeadline lessEq DateTime.now()) and
-                        ArticlesTable.childArticle.isNull()
+    /**
+     * Creates an action [F] which updates the parent article and creates the new child article.
+     * Error handling happens in two ways:
+     *      1. If any of the functions within the concurrent block throw an error, the whole operation will
+     *         short circuit.
+     *      2. If the child article for some unknown reason cannot be validated, the method will throw an error
+     *         which contains details as to what validation errors caused the failure.
+     */
+    fun runRecurrenceUpdate(parent: Article, child: Article): Kind<F, ArticleIndex> =
+        concurrent {
+            val (parentKey) = parent.id
+            val (childKey) = child.id
+
+            !when (val res = !validator.validate(child)) {
+                is Validated.Valid -> create(res)
+                is Validated.Invalid -> raiseError(Throwable(res.e.show(Show.any())))
             }
-        ).bind().result.map { it to it.recurrentCopy() }
-    }
 
-private fun <F> Repository<F, Article>.runRecurrenceUpdate(parent: Article, child: Article): Kind<F, ArticleIndex> =
-    runtime.fx.concurrent {
-        val (parentKey) = parent.id
-        val (childKey) = child.id
+            !updateArticle(parentKey) {
+                this[ArticlesTable.childArticle] = childKey
+                this[ArticlesTable.isRecurrent] = false
+            }
 
-        val x = !when (val res = !validator.validate(child)) {
-            is Validated.Valid -> create(res)
-            is Validated.Invalid -> raiseError(Throwable(res.e.show(Show.any())))
         }
 
-        !updateArticle(parentKey) {
-            this[ArticlesTable.childArticle] = childKey
-            this[ArticlesTable.isRecurrent] = false
-        }
 
-    }
-
-fun <F> Repository<F, Article>.createRecurrentArticles(): Kind<F, List<ArticleIndex>> =
-    runtime.fx.concurrent {
+    return concurrent {
         val recurrentArticles = !selectRecurrentArticles()
 
-        recurrentArticles.map { (parent, child) -> !runRecurrenceUpdate(parent, child) }
+        !recurrentArticles.parTraverse { (parent, child) -> runRecurrenceUpdate(parent, child) }
     }
+}
 
 
 internal fun Query.paginate(limit: Int?, offset: Long?): Query = apply {
@@ -105,5 +121,4 @@ internal fun Query.paginate(limit: Int?, offset: Long?): Query = apply {
         limit(limit)
     }
 }
-
 

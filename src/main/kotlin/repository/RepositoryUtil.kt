@@ -106,5 +106,5 @@ fun <F, E : Table, T> Concurrent<F>.transactionEffect(table: E, f: E.() -> T): K
         }
     }
 
-fun <F, A> Reader<F, *>.concurrent(c: suspend ConcurrentSyntax<F>.() -> A): Kind<F, A> = runtime.fx.concurrent(c)
-fun <F, A> Writer<F, *>.concurrent(c: suspend ConcurrentSyntax<F>.() -> A): Kind<F, A> = runtime.fx.concurrent(c)
+fun <F, A> Runtime<F>.concurrent(c: suspend ConcurrentSyntax<F>.() -> A): Kind<F, A> = runtime.fx.concurrent(c)
+
