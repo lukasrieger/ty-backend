@@ -18,10 +18,10 @@ typealias ContactIndex = PrimaryKey<ContactPartner>
 typealias ValidContact = Valid<ContactPartner>
 
 @JvmName("nullableToContactPartner")
-fun <F> Concurrent<F>.toContactPartner(resultRow: ResultRow?): Kind<F, ContactPartner?> =
+internal fun <F> Concurrent<F>.toContactPartner(resultRow: ResultRow?): Kind<F, ContactPartner?> =
     resultRow?.let { toContactPartner(it) } ?: just(null)
 
-fun <F> Concurrent<F>.toContactPartner(resultRow: ResultRow): Kind<F, ContactPartner> =
+internal fun <F> Concurrent<F>.toContactPartner(resultRow: ResultRow): Kind<F, ContactPartner> =
     fx.concurrent {
         ContactPartner(
             id = keyOf(resultRow[ContactTable.id].value),

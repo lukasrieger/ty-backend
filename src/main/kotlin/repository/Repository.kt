@@ -7,9 +7,11 @@ import org.jetbrains.exposed.sql.Query
 import validation.Validator
 
 
-interface Reader<F, T> {
-
+interface Runtime<F> {
     val runtime: Concurrent<F>
+}
+
+interface Reader<F, T> : Runtime<F> {
 
     /**
      * Retrieve an entry from the database that matches the given [id].
@@ -41,9 +43,8 @@ interface Reader<F, T> {
 }
 
 
-interface Writer<F, T> {
+interface Writer<F, T> : Runtime<F> {
 
-    val runtime: Concurrent<F>
 
     /**
      * Modifies the given [entry] in the database.
@@ -79,6 +80,6 @@ interface Writer<F, T> {
  * Any class that wants to implement this interface has to be a [Reader] and a [Writer]
  * @param T
  */
-interface Repository<F, T> : Reader<F, T>, Writer<F, T> {
+interface Repository<F, T> : Reader<F, T>, Writer<F, T>, Runtime<F> {
     val validator: Validator<F, *, T>
 }
