@@ -1,11 +1,10 @@
-package repository.extensions
+package service.extensions
 
-import arrow.Kind
+
 import model.ContactPartner
 import org.jetbrains.exposed.sql.selectAll
-import repository.Reader
-import repository.concurrent
-import repository.dao.ContactTable
+import service.Reader
+import service.dao.ContactTable
 
 
 /**
@@ -14,13 +13,6 @@ import repository.dao.ContactTable
  * @receiver Repository<ContactPartner>
  * @return Sequence<ContactPartner>
  */
-fun <F> Reader<F, ContactPartner>.getContactPartners(): Kind<F, List<ContactPartner>> =
-    concurrent {
-        val contacts = !byQuery(ContactTable.selectAll())
-        contacts.result.toList()
-    }
-
-
-
-
+suspend fun Reader<*, *, ContactPartner>.getAllContactPartners(): List<ContactPartner> =
+    dataSource.get(ContactTable.selectAll())
 
