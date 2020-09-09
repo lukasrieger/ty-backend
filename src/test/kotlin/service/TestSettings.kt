@@ -1,9 +1,10 @@
-package repository
+package service
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
-import repository.dao.ArticlesTable
-import repository.dao.ContactTable
+import org.jetbrains.exposed.sql.transactions.transaction
+import service.dao.ArticlesTable
+import service.dao.ContactTable
 
 
 object TestDbSettings {
@@ -11,7 +12,11 @@ object TestDbSettings {
         Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver").also {
             it.useNestedTransactions = true
         }
-        SchemaUtils.create(ArticlesTable)
-        SchemaUtils.create(ContactTable)
+
+        transaction {
+            SchemaUtils.create(ArticlesTable)
+            SchemaUtils.create(ContactTable)
+        }
+
     }
 }

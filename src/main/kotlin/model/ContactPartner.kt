@@ -1,17 +1,13 @@
 package model
 
-import arrow.optics.optics
-import repository.Init
-import repository.PrimaryKey
+import service.Id
 
 
-@optics
+
 data class ContactPartner(
-    val id: PrimaryKey<ContactPartner> = Init,
+    val id: Id<ContactPartner>?,
     val surname: String,
     val lastName: String,
     val phoneNumber: String,
     val url: String
-) {
-    companion object
-}
+)

@@ -1,13 +1,13 @@
-package validation
+package instances.article
 
 import model.Article
 import model.Priority
 import org.joda.time.DateTime
-import repository.PrimaryKey
+import service.Id
 import kotlin.reflect.KProperty1
 
-sealed class ArticleValidationError {
 
+sealed class ArticleValidationError {
 
     data class InvalidApplicationDate(val date: DateTime) : ArticleValidationError()
 
@@ -15,7 +15,7 @@ sealed class ArticleValidationError {
 
     data class BlankField<T>(val field: KProperty1<Article, T>) : ArticleValidationError()
 
-    data class MissingArticle(val id: PrimaryKey<Article>) : ArticleValidationError()
+    data class MissingArticle(val id: Id<Article>) : ArticleValidationError()
 
     /**
      * This class describes an error, where a child article claims to have a parent article while the parent article
@@ -35,3 +35,5 @@ sealed class ArticleValidationError {
      */
     data class InvalidRelation(val parent: Article, val child: Article) : ArticleValidationError()
 }
+
+

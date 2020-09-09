@@ -1,10 +1,10 @@
-package repository
+package service
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import repository.dao.ArticlesTable
-import repository.dao.ContactTable
+import service.dao.ArticlesTable
+import service.dao.ContactTable
 
 object DbSettings {
     fun setup() =
@@ -33,4 +33,5 @@ object DbSettings {
 //            }
 //        }
 }
+
 
