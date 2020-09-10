@@ -60,7 +60,7 @@ internal class DefaultArticleValidator(articleReader: Reader<*, *, Article>) : A
 
 
 suspend fun Validator<ArticleValidationError, Article>.validate(
-    id: Id<Article>?,
+    id: Id<Article>,
     title: String,
     text: String,
     rubric: Rubric,

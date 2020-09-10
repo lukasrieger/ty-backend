@@ -1,7 +1,9 @@
 package instances.article
 
 import arrow.fx.coroutines.parTraverse
-import model.*
+import model.Article
+import model.ContactPartner
+import model.RecurrentInfo
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import service.*
@@ -48,7 +50,7 @@ internal class ArticleDataSource(private val contactReader: Reader<*, *, Contact
 
     override suspend fun update(value: Article) =
         transactionEffect(ArticlesTable) {
-            update({ id eq value.id?.id }) { value.toStatement(it) }
+            update({ id eq value.id.id }) { value.toStatement(it) }
             Unit
         }
 

@@ -17,6 +17,9 @@ private val articleErrorHandler =
         override fun validationFailed(errors: Nel<ArticleValidationError>): DatabaseError =
             DatabaseError.ValidationFailed(errors)
 
+        override fun missingId(value: Article): DatabaseError =
+            DatabaseError.UninitializedValue(value)
+
     }
 
 private class ArticleReaderSyntax(contactReader: Reader<*, *, ContactPartner>) :

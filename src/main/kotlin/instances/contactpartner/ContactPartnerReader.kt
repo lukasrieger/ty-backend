@@ -16,6 +16,9 @@ private val contactPartnerErrorHandler =
         override fun validationFailed(errors: Nel<ContactPartnerValidationError>): DatabaseError =
             DatabaseError.ValidationFailed(errors)
 
+        override fun missingId(value: ContactPartner): DatabaseError =
+            DatabaseError.UninitializedValue(value)
+
     }
 
 private val ContactPartnerReaderSyntax = object :

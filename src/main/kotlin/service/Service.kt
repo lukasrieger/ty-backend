@@ -1,48 +1,16 @@
 package service
 
-import arrow.core.*
+import arrow.core.Either
 import arrow.core.computations.either
 import kotlinx.coroutines.Dispatchers
-import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import service.extensions.paginate
 import validation.Validator
 
-interface DataSource<T> {
-
-    suspend fun get(id: Id<T>): T?
-
-    suspend fun get(query: Query, limit: Int? = null, offset: Long? = null): List<T>
-
-    suspend fun count(query: Query): Long
-
-    suspend fun update(value: T)
-
-    suspend fun create(value: T): T
-
-    suspend fun delete(id: Id<T>)
-}
-
-interface ErrorHandler<V, E, T> {
-    fun notFound(id: Id<T>): E
-
-    fun handle(err: Throwable): E
-
-    fun validationFailed(errors: Nel<V>): E
-}
-
-
-interface ReaderSyntax<V, E, T> {
-    val dataSource: DataSource<T>
-    val errorHandler: ErrorHandler<V, E, T>
-}
 
 interface ServiceSyntax<V, E, T> {
     val Service<V, E, T>.validator: Validator<V, T>
 }
-
-
 
 interface Service<V, E, T> : Reader<V, E, T>, ServiceSyntax<V, E, T> {
 

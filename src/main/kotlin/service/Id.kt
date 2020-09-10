@@ -1,7 +1,18 @@
 package service
 
+class MissingIdError : Throwable()
 
-inline class Id<T>(val id: Int)
+sealed class Id<out T> {
+    abstract val id: Int
+}
+
+object Uninitialized : Id<Nothing>() {
+    override val id: Int
+        get() = throw MissingIdError()
+}
+
+data class PrimaryKey<T>(override val id: Int) : Id<T>()
 
 
-fun <T> Int.id() = Id<T>(this)
+fun <T> Int.id() = PrimaryKey<T>(this)
+
