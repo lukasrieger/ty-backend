@@ -7,6 +7,10 @@ import arrow.core.right
 import org.jetbrains.exposed.sql.Query
 import service.extensions.paginate
 
+interface ReaderSyntax<V, E, T> {
+    val dataSource: DataSource<T>
+    val errorHandler: ErrorHandler<V, E, T>
+}
 
 interface Reader<V, E, T> : ReaderSyntax<V, E, T> {
 

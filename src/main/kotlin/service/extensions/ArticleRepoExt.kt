@@ -81,7 +81,7 @@ suspend fun <V, E> Service<V, E, Article>.createRecurrentArticles(): Either<E, L
 
 
     /**
-     * Creates an action [F] which updates the parent article and creates the new child article.
+     * Updates the parent article and creates the new child article.
      * Error handling happens in two ways:
      *      1. If any of the functions within the concurrent block throw an error, the whole operation will
      *         short circuit.
@@ -90,8 +90,8 @@ suspend fun <V, E> Service<V, E, Article>.createRecurrentArticles(): Either<E, L
      */
     suspend fun runRecurrenceUpdate(parent: Article, child: Article): Either<E, Id<Article>> =
         either {
-            val parentKey = parent.id?.id!!
-            val childKey = child.id?.id!!
+            val parentKey = parent.id.id
+            val childKey = child.id.id
 
             !when (val res = validator.validate(child)) {
                 is Validated.Valid -> create(res.a)

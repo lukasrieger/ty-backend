@@ -39,7 +39,7 @@ internal object ContactPartnerDataSource : DataSource<ContactPartner> {
 
     override suspend fun update(value: ContactPartner) =
         transactionEffect(ContactTable) {
-            update({ id eq value.id?.id }) { value.toStatement(it) }
+            update({ id eq value.id.id }) { value.toStatement(it) }
             Unit
         }
 

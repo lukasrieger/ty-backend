@@ -1,7 +1,6 @@
 package instances.article
 
 import arrow.core.Either
-import instances.contactpartner.defaultContactPartnerModule
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -27,9 +26,7 @@ typealias ArticleService = Service<ArticleValidationError, DatabaseError, Articl
 class DefaultArticleReaderTest : StringSpec(), DIAware {
 
     override val di: DI = testDiContainer
-
     private val articleService: ArticleService by instance()
-
 
 
     init {
@@ -69,7 +66,7 @@ class DefaultArticleReaderTest : StringSpec(), DIAware {
 
                     val created = result.b
 
-                    val returned = articleService.byId(created.id!!)
+                    val returned = articleService.byId(created.id)
 
                     returned.shouldBeTypeOf<Either.Right<Article>>()
                 }
