@@ -9,6 +9,8 @@ val mockkVersion: String by project
 val exposedVersion: String by project
 val kodeinVersion: String by project
 
+group = "lukas.io"
+
 
 
 repositories {
