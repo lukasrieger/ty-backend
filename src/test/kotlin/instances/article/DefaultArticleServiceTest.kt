@@ -7,10 +7,7 @@ import io.kotest.property.checkAll
 import model.Article
 import types.Id
 import types.PersistenceError
-import types.ReadDBEitherSyntax.trySingleById
-import types.WriteDBEitherSyntax.tryCreate
-import types.WriteDBEitherSyntax.tryDelete
-import types.WriteDBEitherSyntax.tryUpdate
+import types.syntax.EitherErrorSyntax.queryEither
 import util.arbitraryArticle
 
 
@@ -21,31 +18,37 @@ class DefaultArticleServiceTest : StringSpec() {
     init {
         "service.update should have no effect for non existing articles" {
             checkAll(arbitraryArticle) { article ->
-                val negId = Id<Article>(-1)
-                val withInvalidId = article.copy(id = negId)
+                queryEither<PersistenceError, Unit> {
+                    val negId = Id<Article>(-1)
+                    val withInvalidId = article.copy(id = negId)
 
-                val result = articleService.tryUpdate(withInvalidId)
+                    val result = articleService.tryUpdate(withInvalidId)
 
-                result.shouldBeTypeOf<Either.Right<Unit>>()
-                val checkNotExisting = articleService.trySingleById(negId)
+                    result.shouldBeTypeOf<Either.Right<Unit>>()
+                    val checkNotExisting = articleService.trySingleById(negId)
 
-                checkNotExisting.shouldBeTypeOf<Either.Left<PersistenceError.MissingEntry<Article>>>()
+                    checkNotExisting.shouldBeTypeOf<Either.Left<PersistenceError.MissingEntry<Article>>>()
+                }
             }
         }
 
         "service.create always returns an article with an id" {
             checkAll(arbitraryArticle) { article ->
-                val result = articleService.tryCreate(article)
+                queryEither<PersistenceError, Unit> {
+                    val result = articleService.tryCreate(article)
 
-                result.shouldBeTypeOf<Either.Right<Id<Article>>>()
+                    result.shouldBeTypeOf<Either.Right<Id<Article>>>()
+                }
             }
         }
 
         "service.delete should not fail for non existing ids" {
             checkAll<Int> { num ->
-                val result = articleService.tryDelete(Id(num))
+                queryEither<PersistenceError, Unit> {
+                    val result = articleService.tryDelete(Id(num))
 
-                result.shouldBeTypeOf<Either.Right<Unit>>()
+                    result.shouldBeTypeOf<Either.Right<Unit>>()
+                }
             }
         }
     }

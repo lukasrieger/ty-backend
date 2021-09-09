@@ -4,6 +4,9 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.select
 
+@JvmInline
+value class Id<T>(val identifier: Int)
+
 data class DatabaseContext(val table: IntIdTable)
 
 interface ReadDB<T> : FromDB<T> {
