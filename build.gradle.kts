@@ -10,7 +10,7 @@ val exposedVersion: String by project
 val kodeinVersion: String by project
 
 group = "typhoon"
-version = "3.0.3"
+version = "3.0.7"
 
 
 
