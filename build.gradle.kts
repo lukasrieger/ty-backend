@@ -57,6 +57,7 @@ tasks {
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
+    classifier = "sources"
     from(sourceSets.main.get().allSource)
 }
 
