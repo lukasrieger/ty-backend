@@ -5,7 +5,7 @@ import model.Rubric
 import model.SupportType
 import model.TargetGroup
 import org.jetbrains.exposed.sql.*
-import service.dao.ArticlesTable
+import types.dao.ArticlesTable
 
 data class Constraint(val isUnion: Boolean, val operator: Op<Boolean>)
 

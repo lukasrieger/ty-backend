@@ -2,57 +2,48 @@ package instances.article
 
 import arrow.core.Either
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeTypeOf
 import io.kotest.property.checkAll
 import model.Article
-import model.DatabaseError
-import org.kodein.di.DI
-import org.kodein.di.DIAware
-import org.kodein.di.instance
-import service.arbitraryArticle
-import service.id
-import testDiContainer
+import types.Id
+import types.PersistenceError
+import types.ReadDBEitherSyntax.trySingleById
+import types.WriteDBEitherSyntax.tryCreate
+import types.WriteDBEitherSyntax.tryDelete
+import types.WriteDBEitherSyntax.tryUpdate
+import util.arbitraryArticle
 
 
-class DefaultArticleServiceTest : StringSpec(), DIAware {
+class DefaultArticleServiceTest : StringSpec() {
 
-    override val di: DI = testDiContainer
-
-    private val articleService: ArticleService by instance()
+    private val articleService: ArticleService = ArticleService
 
     init {
-        "update should have no effect for non existing articles" {
+        "service.update should have no effect for non existing articles" {
             checkAll(arbitraryArticle) { article ->
-                val withInvalidId = article.copy(id = (-1).id())
+                val negId = Id<Article>(-1)
+                val withInvalidId = article.copy(id = negId)
 
-                val result = articleService.update(withInvalidId)
+                val result = articleService.tryUpdate(withInvalidId)
 
                 result.shouldBeTypeOf<Either.Right<Unit>>()
+                val checkNotExisting = articleService.trySingleById(negId)
 
-                val checkNotExisting = articleService.byId((-1).id())
-
-                checkNotExisting.shouldBeTypeOf<Either.Left<DatabaseError.NotFound<Article>>>()
+                checkNotExisting.shouldBeTypeOf<Either.Left<PersistenceError.MissingEntry<Article>>>()
             }
         }
 
-        "create always returns an article with an id" {
+        "service.create always returns an article with an id" {
             checkAll(arbitraryArticle) { article ->
-                val result = articleService.create(article)
+                val result = articleService.tryCreate(article)
 
-
-                result.shouldBeTypeOf<Either.Right<Article>>()
-
-                val created = result.b
-
-
-                created.id.shouldNotBeNull()
+                result.shouldBeTypeOf<Either.Right<Id<Article>>>()
             }
         }
 
-        "delete should have no effect for non existing ids" {
+        "service.delete should not fail for non existing ids" {
             checkAll<Int> { num ->
-                val result = articleService.delete(num.id())
+                val result = articleService.tryDelete(Id(num))
 
                 result.shouldBeTypeOf<Either.Right<Unit>>()
             }

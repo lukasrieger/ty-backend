@@ -1,111 +1,77 @@
 package instances.article
 
-import arrow.fx.coroutines.parTraverse
+import arrow.core.computations.nullable
 import model.Article
-import model.ContactPartner
 import model.RecurrentInfo
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.statements.UpdateBuilder
-import service.*
-import service.dao.ArticlesTable
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.update
+import types.*
+import types.dao.ArticlesTable
 
+private val ArticleDeserializer = FromDB {
+    Article(
+        id = this[ArticlesTable.id].value.let(::Id),
+        title = this[ArticlesTable.title],
+        text = this[ArticlesTable.text],
+        rubric = this[ArticlesTable.rubric],
+        priority = this[ArticlesTable.priority],
+        targetGroup = this[ArticlesTable.targetGroup],
+        supportType = this[ArticlesTable.supportType],
+        subject = this[ArticlesTable.subject],
+        state = this[ArticlesTable.state],
+        archiveDate = this[ArticlesTable.archiveDate],
+        recurrentInfo = readRecurrence(this),
+        applicationDeadline = this[ArticlesTable.applicationDeadline],
+        contactPartner = this[ArticlesTable.contactPartner]?.let(::Id),
+        childArticle = this[ArticlesTable.childArticle]?.let(::Id),
+        parentArticle = this[ArticlesTable.parentArticle]?.let(::Id)
+    )
+}
 
-private fun Article.toStatement(statement: UpdateBuilder<Int>): Unit = statement.run {
-    this[ArticlesTable.title] = title
-    this[ArticlesTable.text] = text
-    this[ArticlesTable.rubric] = rubric
-    this[ArticlesTable.priority] = priority
-    this[ArticlesTable.targetGroup] = targetGroup
-    this[ArticlesTable.supportType] = supportType
-    this[ArticlesTable.subject] = subject
-    this[ArticlesTable.state] = state
-    this[ArticlesTable.archiveDate] = archiveDate
-    this[ArticlesTable.applicationDeadline] = applicationDeadline
-    this[ArticlesTable.contactPartner] = contactPartner?.id?.id
-    this[ArticlesTable.childArticle] = childArticle?.id
-    this[ArticlesTable.parentArticle] = parentArticle?.id
-    this[ArticlesTable.isRecurrent] = recurrentInfo != null
-    this[ArticlesTable.recurrentCheckFrom] = recurrentInfo?.recurrentCheckFrom
-    this[ArticlesTable.nextApplicationDeadline] = recurrentInfo?.applicationDeadline
-    this[ArticlesTable.nextArchiveDate] = recurrentInfo?.archiveDate
+private val ArticleSerializer = IntoDB<Article> { builder ->
+    builder.also { stm ->
+        stm[ArticlesTable.title] = title
+        stm[ArticlesTable.text] = text
+        stm[ArticlesTable.rubric] = rubric
+        stm[ArticlesTable.priority] = priority
+        stm[ArticlesTable.targetGroup] = targetGroup
+        stm[ArticlesTable.supportType] = supportType
+        stm[ArticlesTable.subject] = subject
+        stm[ArticlesTable.state] = state
+        stm[ArticlesTable.archiveDate] = archiveDate
+        stm[ArticlesTable.applicationDeadline] = applicationDeadline
+        stm[ArticlesTable.contactPartner] = contactPartner?.identifier
+        stm[ArticlesTable.childArticle] = childArticle?.identifier
+        stm[ArticlesTable.parentArticle] = parentArticle?.identifier
+        stm[ArticlesTable.isRecurrent] = recurrentInfo != null
+        stm[ArticlesTable.recurrentCheckFrom] = recurrentInfo?.recurrentCheckFrom
+        stm[ArticlesTable.nextApplicationDeadline] = recurrentInfo?.applicationDeadline
+        stm[ArticlesTable.nextArchiveDate] = recurrentInfo?.archiveDate
+    }
 }
 
 
-internal class ArticleDataSource(private val contactReader: Reader<*, *, ContactPartner>) : DataSource<Article> {
+internal fun readRecurrence(resultRow: ResultRow): RecurrentInfo? = nullable.eager {
+    val checkFrom = resultRow[ArticlesTable.recurrentCheckFrom].bind()
+    val deadline = resultRow[ArticlesTable.nextApplicationDeadline].bind()
+    val archiveDate = resultRow[ArticlesTable.nextArchiveDate].bind()
 
-    override suspend fun get(id: Id<Article>): Article? =
-        transactionEffect(ArticlesTable) {
-            select { ArticlesTable.id eq id.id }
-                .singleOrNull()
-                ?.toArticle()
-        }
-
-    override suspend fun get(query: Query, limit: Int?, offset: Long?): List<Article> =
-        transactionEffect(ArticlesTable) {
-            query.parTraverse { it.toArticle() }
-        }
-
-    override suspend fun count(query: Query): Long =
-        transactionEffect(ArticlesTable) { query.count() }
-
-    override suspend fun update(value: Article) =
-        transactionEffect(ArticlesTable) {
-            update({ id eq value.id.id }) { value.toStatement(it) }
-            Unit
-        }
-
-    override suspend fun create(value: Article): Article =
-        transactionEffect(ArticlesTable) {
-            val id = insert { value.toStatement(it) } get id
-            value.copy(id = id.value.id())
-        }
-
-    override suspend fun delete(id: Id<Article>) =
-        transactionEffect(ArticlesTable) {
-            update({ childArticle eq id.id }) { it[childArticle] = null }
-            update({ parentArticle eq id.id }) { it[parentArticle] = null }
-            deleteWhere { ArticlesTable.id eq id.id }
-            Unit
-        }
-
-
-    private suspend fun ResultRow.toArticle(): Article {
-        val contactPartner =
-            this@toArticle[ArticlesTable.contactPartner]?.let {
-                contactReader.dataSource.get(it.id())
-            }
-
-        return Article(
-            id = this@toArticle[ArticlesTable.id].value.id(),
-            title = this@toArticle[ArticlesTable.title],
-            text = this@toArticle[ArticlesTable.text],
-            rubric = this@toArticle[ArticlesTable.rubric],
-            priority = this@toArticle[ArticlesTable.priority],
-            targetGroup = this@toArticle[ArticlesTable.targetGroup],
-            supportType = this@toArticle[ArticlesTable.supportType],
-            subject = this@toArticle[ArticlesTable.subject],
-            state = this@toArticle[ArticlesTable.state],
-            archiveDate = this@toArticle[ArticlesTable.archiveDate],
-            recurrentInfo = readRecurrence(this@toArticle),
-            applicationDeadline = this@toArticle[ArticlesTable.applicationDeadline],
-            contactPartner = contactPartner,
-            childArticle = this@toArticle[ArticlesTable.childArticle]?.id(),
-            parentArticle = this@toArticle[ArticlesTable.parentArticle]?.id()
-        )
-    }
-
+    RecurrentInfo(checkFrom, deadline, archiveDate)
 }
 
 
-fun readRecurrence(resultRow: ResultRow) =
-    resultRow[ArticlesTable.recurrentCheckFrom]?.let { checkFrom ->
-        resultRow[ArticlesTable.nextApplicationDeadline]?.let { deadline ->
-            resultRow[ArticlesTable.nextArchiveDate]?.let { archiveDate ->
-                RecurrentInfo(
-                    recurrentCheckFrom = checkFrom,
-                    applicationDeadline = deadline,
-                    archiveDate = archiveDate
-                )
-            }
-        }
+object ArticleReader : ReadDB<Article>, FromDB<Article> by ArticleDeserializer {
+    override val context: DatabaseContext = DatabaseContext(ArticlesTable)
+}
+
+object ArticleWriter : WriteDB<Article>, IntoDB<Article> by ArticleSerializer {
+    override val context: DatabaseContext = DatabaseContext(ArticlesTable)
+
+    override suspend fun delete(entity: Id<Article>): Unit = transactionEffect(ArticlesTable) {
+        update({ childArticle eq entity.identifier }) { it[childArticle] = null }
+        update({ parentArticle eq entity.identifier }) { it[parentArticle] = null }
+        deleteWhere { id eq entity.identifier }
     }
+
+}

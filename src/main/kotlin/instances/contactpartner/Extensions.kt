@@ -1,10 +1,10 @@
-package service.extensions
+package instances.contactpartner
 
 
 import model.ContactPartner
 import org.jetbrains.exposed.sql.selectAll
-import service.Reader
-import service.dao.ContactTable
+import types.ReadDB
+import types.dao.ContactTable
 
 
 /**
@@ -13,6 +13,6 @@ import service.dao.ContactTable
  * @receiver Repository<ContactPartner>
  * @return Sequence<ContactPartner>
  */
-suspend fun Reader<*, *, ContactPartner>.getAllContactPartners(): List<ContactPartner> =
-    dataSource.get(ContactTable.selectAll())
+suspend fun ReadDB<ContactPartner>.getAllContactPartners() =
+    getByQuery(ContactTable.selectAll())
 

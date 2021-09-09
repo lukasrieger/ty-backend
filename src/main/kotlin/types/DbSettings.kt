@@ -1,10 +1,10 @@
-package service
+package types
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import service.dao.ArticlesTable
-import service.dao.ContactTable
+import types.dao.ArticlesTable
+import types.dao.ContactTable
 
 object DbSettings {
     fun setup() =
@@ -16,6 +16,8 @@ object DbSettings {
 
             }
         }
+
+
 //        Database.connect(
 //            url = "jdbc:mysql://localhost:3306/typhoon?serverTimezone=UTC",
 //            driver = "com.mysql.cj.jdbc.Driver",
@@ -27,8 +29,8 @@ object DbSettings {
 //        it.useNestedTransactions = true
 //            transaction {
 //                //
-//                SchemaUtils.create(ContactTable)
-//                SchemaUtils.create(ArticlesTable)
+//                SchemaUtils.service.create(ContactTable)
+//                SchemaUtils.service.create(ArticlesTable)
 //
 //            }
 //        }

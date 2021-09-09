@@ -1,22 +1,17 @@
 package instances.contactpartner
 
-
 import model.ContactPartner
-import model.DatabaseError
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.singleton
-import service.Reader
-import service.Service
+import types.DatabaseContext
+import types.ReadDB
+import types.WriteDB
+import types.dao.ArticlesTable
+import validation.Validate
 
 
+object ContactPartnerService :
+    ReadDB<ContactPartner> by ContactPartnerReader,
+    WriteDB<ContactPartner> by ContactPartnerWriter {
 
-val defaultContactPartnerModule = DI.Module("ContactPartnerModule", false) {
-    bind<Reader<ContactPartnerValidationError, DatabaseError, ContactPartner>>() with singleton {
-        DefaultContactPartnerReader
-    }
-
-    bind<Service<ContactPartnerValidationError, DatabaseError, ContactPartner>>() with singleton {
-        DefaultContactPartnerService
-    }
+    override val context: DatabaseContext = DatabaseContext(ArticlesTable)
+    val validator: Validate<*, ContactPartner> = ContactPartnerValidate
 }

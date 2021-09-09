@@ -1,13 +1,13 @@
 package model
 
-import service.Id
-
+import types.Id
+import types.Index
 
 
 data class ContactPartner(
-    val id: Id<ContactPartner>,
+    override val id: Id<ContactPartner>? = null,
     val surname: String,
     val lastName: String,
     val phoneNumber: String,
     val url: String
-)
+) : Index<ContactPartner>

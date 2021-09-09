@@ -1,4 +1,0 @@
-package instances.contactpartner
-
-
-sealed class ContactPartnerValidationError

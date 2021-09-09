@@ -1,12 +1,12 @@
 package model
 
 import org.joda.time.DateTime
-import service.Id
-import service.Uninitialized
+import types.Id
+import types.Index
 
 
 data class Article(
-    val id: Id<Article> = Uninitialized,
+    override val id: Id<Article>? = null,
     val title: String,
     val text: String,
     val rubric: Rubric,
@@ -18,11 +18,11 @@ data class Article(
     val archiveDate: DateTime,
     val recurrentInfo: RecurrentInfo? = null,
     val applicationDeadline: DateTime,
-    val contactPartner: ContactPartner? = null,
+    val contactPartner: Id<ContactPartner>? = null,
     val childArticle: Id<Article>? = null,
     val parentArticle: Id<Article>? = null,
     val attachedSource: Source? = null
-) {
+) : Index<Article> {
 
 
     val hasChild
@@ -44,7 +44,7 @@ data class Article(
  */
 fun Article.recurrentCopy() =
     copy(
-        id = Uninitialized,
+        id = null,
         parentArticle = id,
         childArticle = null
     )

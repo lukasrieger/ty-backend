@@ -1,10 +1,10 @@
-package service
+package util
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import service.dao.ArticlesTable
-import service.dao.ContactTable
+import types.dao.ArticlesTable
+import types.dao.ContactTable
 
 
 object TestDbSettings {

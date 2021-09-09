@@ -3,7 +3,7 @@ package instances.article
 import model.Article
 import model.Priority
 import org.joda.time.DateTime
-import service.Id
+import types.Id
 import kotlin.reflect.KProperty1
 
 
